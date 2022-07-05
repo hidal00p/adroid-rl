@@ -4,16 +4,19 @@ It creates an environment CtrlAviary and continually calls CtrlAviary.step().
 It publishes on topic 'obs' and reads from topic 'action'.
 """
 import sys, os  # See: https://github.com/utiasDSL/gym-pybullet-drones/issues/89
+import getpass
 sys.path.append(sys.path[0].replace("ros2/install/ros2_gym_pybullet_drones/lib/ros2_gym_pybullet_drones", ""))
-sys.path.append("/Users/"+os.getlogin()+"/opt/anaconda3/envs/drones/lib/python3.8/site-packages")  # macOS
-# sys.path.append("/home/"+os.getlogin()+"/anaconda3/envs/drones/lib/python3.8/site-packages")  # Ubuntu
+if sys.platform == 'darwin': # macOS
+    sys.path.append("/Users/"+os.getlogin()+"/opt/anaconda3/envs/drones/lib/python3.8/site-packages")  
+elif sys.platform == 'linux': # Ubuntu
+    sys.path.append("/home/"+getpass.getuser()+"/anaconda3/envs/drones/lib/python3.8/site-packages")  
 
 import rclpy
 import numpy as np
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 
-from gym_pybullet_drones.envs.BaseAviary import DroneModel, Physics
+from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 
 class AviaryWrapper(Node):
