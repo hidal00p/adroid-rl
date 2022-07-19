@@ -77,3 +77,9 @@ class CustomAviary(HoverAviary):
             for root in self.forestGrid:
                 coords = (root[0], root[1])
                 self._generatePillar(coords)
+    
+    def info(self):
+        print(f"[LOG INFO]: Obstacles data:")
+        for count, pillarData in enumerate(self.PILLAR_DATA):
+            x, y, id = pillarData
+            print(f"{count + 1}) X: {x} Y:{y} ID: {id}")

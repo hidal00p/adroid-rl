@@ -4,11 +4,15 @@ from utils.utils import *
 import time, signal,  sys
 
 def run(forestGrid):
+    # Define env
+    env = CustomAviary(gui=True, forestGrid=forestGrid)
+
     # Define SIGINT handler
     def sigint_handler(sig, frame):
         # Close and cleanup
         if f_stream:
             close_plt()
+        env.info()
         env.close()
 
         # Exit the program
@@ -23,9 +27,6 @@ def run(forestGrid):
     if f_stream:
         init_plt()
     
-    # Not working with gui=False & record=True
-    env = CustomAviary(gui=True, forestGrid=forestGrid)
-
     # Define action
     hover_action = 0.0
     
@@ -59,10 +60,12 @@ def run(forestGrid):
 
 
 if __name__ == "__main__":
+    size = 1.6
+    sep = .25
     p = Poisson2D(
-        size = 1, 
-        sep = 0.2,
-        offSetPair = (.2, -.5),
+        size = size, 
+        sep = sep,
+        offSetPair = (.2, -size/2),
         fDebug = False
     )
     
