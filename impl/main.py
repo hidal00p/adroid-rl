@@ -3,9 +3,13 @@ from impl.aviary.CustomAviary import CustomAviary
 from utils.utils import *
 import time, signal,  sys
 
-def run(forestGrid):
-    # Define env
-    env = CustomAviary(gui=True, forestGrid=forestGrid)
+def run():
+    # Define env and forest provider
+    forestProvider = ForestProvider(fPoissonGrid=True, fDebug=True)
+    env = CustomAviary(
+        gui=True, 
+        forestProvider=forestProvider
+        )
 
     # Define SIGINT handler
     def sigint_handler(sig, frame):
@@ -60,14 +64,4 @@ def run(forestGrid):
 
 
 if __name__ == "__main__":
-    size = 1.6
-    sep = .25
-    p = Poisson2D(
-        size = size, 
-        sep = sep,
-        offSetPair = (.2, -size/2),
-        fDebug = False
-    )
-    
-    forestGrid = p.generate().get()
-    run(forestGrid = forestGrid)
+    run()

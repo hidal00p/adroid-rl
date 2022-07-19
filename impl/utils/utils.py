@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+import math
+import random
+import numpy as np
 
 # Init
 def init_plt():
@@ -11,10 +14,6 @@ def close_plt():
 # Stream
 def rgb_stream(rgb):
     plt.imshow(rgb)
-
-import math
-import random
-import numpy as np
 
 class Poisson2D:
     def __init__(self, size = 1, sep = 0.05, fDebug = False, offSetPair = None ):
@@ -166,5 +165,71 @@ class Poisson2D:
         coords = []
         for index in self.index_all:
             coords.append((self.grid[index,0], self.grid[index,1]))
+        
+        return coords
+
+class TrigConsts:
+    PI = 4 * np.arctan(1)
+    DEG2RAD = PI / 180
+    RAD2DEG = 1 / DEG2RAD
+
+class ForestProvider:
+    """
+    Takes full responsibility of generating forest map.
+    It provides client code with a map to be used.
+    """
+
+    def __init__(self, fPoissonGrid = False, fDebug = False):
+        self.forestGrid = []
+        self.baitComfortInterval = .05
+        if fPoissonGrid:
+            self._generatePoissonForest()
+        else:
+            self._generateCircularForest()
+        
+        assert len(self.forestGrid) != 0 and self.baitCoordinates != None, "Forest and/or bait configured incorrectly"
+        if fDebug:
+            print(f"[DEBUG INFO FOR {__class__}]:\nforestGrid: {self.forestGrid}\nbaitCoordinates: {self.baitCoordinates}")
+        
+
+    def _generatePoissonForest(self):
+        size = 1.6
+        sep = .25
+        x_offset = .2
+        y_offset = -size / 2
+        
+        p = Poisson2D(
+            size = size, 
+            sep = sep,
+            offSetPair = (x_offset, y_offset),
+            fDebug = False
+        )
+
+        self.forestGrid = p.generate().get()
+        self.baitCoordinates = ((1 + self.baitComfortInterval) * (size + x_offset), 0)
+    
+    def _generateCircularForest(self):
+        numPillars = 10
+        radius = 1
+        x_c = 0.0
+        y_c = 0.0
+
+        self.forestGrid = ForestProvider.getCoordsOnCircle(
+            numPillars = numPillars,
+            x = x_c, 
+            y = y_c,
+            r = radius)
+        
+        self.baitCoordinates = ((1 + self.baitComfortInterval) * radius, 0)
+
+    def getCoordsOnCircle(numPoints: int = None, x: float = 0, y: float = 0, r: float = 1) -> float:
+        assert numPoints != None, "Please provide an unisigned integer number of poinst on the circle"
+        
+        atomicArc : float = 360 / (numPoints - 1) # 360 degrees / number of unit arcs
+        atomicArc = atomicArc * TrigConsts.DEG2RAD
+        
+        coords = []
+        for point in range(numPoints - 1):
+            coords.append((x + r * np.cos(atomicArc * point), y + r * np.sin(atomicArc * point)))
         
         return coords

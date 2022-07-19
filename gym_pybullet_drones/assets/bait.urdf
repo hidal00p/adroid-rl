@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+
+<robot name="bait">
+
+  <link name="base_link"> 
+
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="1.2"/>
+      <inertia ixx="0" ixy="0.0" ixz="0.0" iyy="0" iyz="0.0" izz="0"/>
+    </inertial>
+
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size=".025 .025 .025" />
+      </geometry> 
+      <material name="grey">
+        <color rgba="0.086, 0.42, 0.63 1"/>
+      </material> 
+    </visual>
+
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size=".025 .025 .025" />
+      </geometry>
+    </collision>  
+
+  </link>
+
+</robot>
+
