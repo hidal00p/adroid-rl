@@ -8,6 +8,19 @@ from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import Actio
 from impl.utils.utils import ForestProvider
 
 class CustomAviary(HoverAviary):
+    
+    # Decorators
+    def _logged(obj):
+
+        def __logged(func):
+
+            def logged(self):
+                print(f"[LOG INFO] {obj}:")
+                func(self)
+        
+            return logged
+
+        return __logged
 
     def __init__(self,
                  drone_model: DroneModel=DroneModel.CF2X,
@@ -82,21 +95,19 @@ class CustomAviary(HoverAviary):
             coords = (root[0], root[1])
             self._generatePillar(coords)
     
+    @_logged("Bait")
     def bait_info(self):
-        assert self.BAIT_ID != None, "No bait specified"
-        print(f"[LOG INFO]: Bait data:")
         pos, rpy = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
         print(f"Position: {pos} Orientation: {rpy}")
         
-
+    @_logged("Agent")
     def agent_info(self):
-        print(f"[LOG INFO]: Agent data:")
         pos, rpy = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
         print(f"Position: {pos} Orientation: {rpy}")
 
-
+    @_logged("Obstacles")
     def obstacle_info(self):
-        print(f"[LOG INFO]: Obstacles data:")
         for count, pillarData in enumerate(self.PILLAR_DATA):
             x, y, id = pillarData
             print(f"{count + 1}) X: {x} Y:{y} ID: {id}")
+    
