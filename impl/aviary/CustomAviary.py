@@ -68,6 +68,11 @@ class CustomAviary(HoverAviary):
             physicsClientId=self.CLIENT
         )
 
+    def _getPosAndOrient(bodyId, clientId):
+        pos, quat = p.getBasePositionAndOrientation(bodyId, clientId)
+        rpy = p.getEulerFromQuaternion(quat)
+        return (pos, rpy)
+
     def _addObstacles(self):
         # Add bait
         self._addBait()
@@ -77,7 +82,20 @@ class CustomAviary(HoverAviary):
             coords = (root[0], root[1])
             self._generatePillar(coords)
     
-    def info(self):
+    def bait_info(self):
+        assert self.BAIT_ID != None, "No bait specified"
+        print(f"[LOG INFO]: Bait data:")
+        pos, rpy = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
+        print(f"Position: {pos} Orientation: {rpy}")
+        
+
+    def agent_info(self):
+        print(f"[LOG INFO]: Agent data:")
+        pos, rpy = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
+        print(f"Position: {pos} Orientation: {rpy}")
+
+
+    def obstacle_info(self):
         print(f"[LOG INFO]: Obstacles data:")
         for count, pillarData in enumerate(self.PILLAR_DATA):
             x, y, id = pillarData
