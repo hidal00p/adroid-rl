@@ -1,7 +1,8 @@
 # NOTE
 This repository's `master` branch is actively developed, please `git pull` frequently and feel free to open new [issues](https://github.com/utiasDSL/gym-pybullet-drones/issues) for any undesired, unexpected, or (presumably) incorrect behavior. Thanks 🙏
 
-
+# Disclaimer
+This particular repository is a [fork](https://github.com/utiasDSL/gym-pybullet-drones).
 
 
 # gym-pybullet-drones
