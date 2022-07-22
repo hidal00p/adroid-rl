@@ -13,6 +13,9 @@ class OrientationVec:
         
         return _assertive
 
+    """
+    Functionally performs the same actions as `fromCoordinates`, however takes numpy array as argument directly
+    """    
     def fromCoordinatesNd(coords: np.ndarray):
         vec = OrientationVec()
 
