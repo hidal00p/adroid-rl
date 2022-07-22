@@ -1,21 +1,8 @@
 import matplotlib.pyplot as plt
-import math
-import random
+import math, random
 import numpy as np
 
-# Init
-def initPlt():
-    plt.ion()
-
-# Close
-def closePlt():
-    plt.ioff()
-    plt.close()
-
-# Stream
-def rgbStream(rgb):
-    print(len(rgb), len(rgb[0]))
-    plt.imshow(rgb)
+from utils.trig import TrigConsts
 
 class Poisson2D:
     def __init__(self, size = 1, sep = 0.05, fDebug = False, offSetPair = None ):
@@ -170,11 +157,6 @@ class Poisson2D:
         
         return coords
 
-class TrigConsts:
-    PI = 4 * np.arctan(1)
-    DEG2RAD = PI / 180
-    RAD2DEG = 1 / DEG2RAD
-
 class ForestProvider:
     """
     Takes full responsibility of generating forest map.
@@ -235,62 +217,3 @@ class ForestProvider:
             coords.append((x + r * np.cos(atomicArc * point), y + r * np.sin(atomicArc * point)))
         
         return coords
-
-class OrientationVec:
-    """
-    Computes orientation vector, and defines some operations on orientation vectors.
-    Always contains coordinates of a unit vector, so it mormalizes the vector
-    """
-
-    def assertive(func):
-        def _assertive(a, b):
-            assert isinstance(b, OrientationVec)
-            return func(a, b)
-        
-        return _assertive
-
-    def fromCoordinatesNd(coords: np.ndarray):
-        vec = OrientationVec()
-
-        # Normalization
-        n = np.linalg.norm(coords)
-        vec.coords = 0 if n == 0 else coords / n
-
-        return vec
-
-    """
-    Returns a unit vector from coordinates (X, Y, Z), which must be the the difference between X_A, Y_A, Z_A and X_B, Y_B, Z_B which define vector AB in R^3
-    """
-    def fromCoordinates(coords):
-        vec = OrientationVec()
-        x, y, z = coords
-        
-        # Edge cases
-        x = 1 if x == None else x
-        y = 0 if y == None else y
-        z = 0 if z == None else z
-        
-        # Normalization
-        _vec = np.array([x, y, z])
-        n = np.linalg.norm(_vec)
-        vec.coords = 0 if n == 0 else _vec / n
-        
-        return vec
-        
-    @assertive
-    def correlateTo(a, b):
-        return np.dot(a.coords, b.coords)
-
-    @assertive
-    def __add__(a, b):
-        # Always normalizes the resultant direction
-        return OrientationVec.fromCoordinatesNd(a.coords + b.coords)
-
-    @assertive
-    def __sub__(a, b):
-        # Always normalizes the resultant direction
-        return OrientationVec.fromCoordinatesNd(a.coords - b.coords)
-    
-    def __str__(self) -> str:
-        return str(self.coords)
-        

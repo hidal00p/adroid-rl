@@ -1,66 +1,85 @@
 import numpy as np
-from impl.aviary.CustomAviary import CustomAviary
-from utils.utils import *
 import time, signal,  sys
+
+from aviary.CustomAviary import CustomAviary
+from utils import ForestProvider
+from utils import closePlt, initPlt, rgbStream
 
 def run():
     # Define env and forest provider
     forestProvider = ForestProvider(fPoissonGrid=True, fDebug=True)
     env = CustomAviary(
-        gui=True, 
+        initial_xyzs=np.array([[0, 0, .15]]),
+        gui=True,
         forestProvider=forestProvider
         )
+    env.agentInfo()
 
     # Define SIGINT handler
-    def sigint_handler(sig, frame):
+    def sigintHandler(sig, frame):
+        env.obstacleInfo()
+        env.close()
+        
         # Close and cleanup
         if f_stream:
-            close_plt()
-        env.info()
-        env.close()
+            closePlt()
 
         # Exit the program
         print("Shutting down gracefully")
         sys.exit(0)
     
     # Register signal handler
-    signal.signal(signal.SIGINT, sigint_handler)
+    signal.signal(signal.SIGINT, sigintHandler)
 
     # Define streaming flag
     f_stream = False
     if f_stream:
-        init_plt()
+        initPlt()
     
     # Define action
     hover_action = 0.0
     
-    fYaw = False
+    fYaw = True
     if fYaw:
-        yaw_rate = .5
+        yaw_rate = .1
         hover_action += yaw_rate
 
     final_action = np.array([-hover_action, hover_action, -hover_action, hover_action])
 
     # Define loop parameters
     sleep_time = 0.02
-    logging_interval = 10
-    logging_num = 5 # times per `logging_interval`
+    
+    logging_interval = 1
+    logging_num = 4 # times per `logging_interval`
     logging_freq = logging_interval / logging_num
+
+    streaming_interval = 1
+    streaming_num = 2
+    streaming_freq = streaming_interval / streaming_num
+
     count = 1
+    elapsed_time = 0
     while True:
         # Advance
         env.step(final_action)
         
-        time.sleep(sleep_time)
+        if (f_stream and (elapsed_time % streaming_freq == 0)):
+            rgbStream(env._getDroneImages(0)[0])
 
-        if f_stream:
-            rgb_stream(env._getDroneImages(0)[0])
-
-        elapsed_time = count * sleep_time
         if (elapsed_time % logging_freq == 0):
+            agenOr = env.extractAgentOrientationVector()
+            baitOr = env.computeBaitCompass()
             print(f"Seconds elapsed: {elapsed_time}")
-            print(f"Current robot state: {env._computeObs()}")
-            # print(f"Current rgb feed:\n {rgb}")
+            print(f"Robot spatial data: {agenOr}")
+            print(f"Bait compass spatial data: {baitOr}")
+            print(f"Directional correlation: {agenOr.correlateTo(baitOr)}")
+            # print(f"Current robot state: {env._computeObs()}")
+            # env.baitInfo()
+            # env.agentInfo()
+            
+        elapsed_time = count * sleep_time
+        count += 1
+        time.sleep(sleep_time)
 
 
 if __name__ == "__main__":
