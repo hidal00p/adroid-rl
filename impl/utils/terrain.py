@@ -217,3 +217,22 @@ class ForestProvider:
             coords.append((x + r * np.cos(atomicArc * point), y + r * np.sin(atomicArc * point)))
         
         return coords
+
+class ReferencePath:
+    
+    """
+    Simple datastructure to hold reference path coordinates and manipulate them
+    """
+
+    def __init__(self, coords_start = None, coords_end = None):
+        assert coords_start != None and coords_end != None
+
+        self.A = coords_start
+        self.B = coords_end
+    
+    def info(self):
+        print(
+            f"[ReferencePath INFO]\n"
+            f"\tA: {self.A}\n"
+            f"\tB: {self.B}"
+        )

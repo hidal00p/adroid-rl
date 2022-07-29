@@ -5,10 +5,14 @@ import pybullet as p
 from gym_pybullet_drones.envs.single_agent_rl import HoverAviary
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import ActionType, ObservationType
-from utils import ForestProvider, OrientationVec
+from utils import ForestProvider, OrientationVec, ReferencePath
 
 class CustomAviary(HoverAviary):
     
+    """
+    Custom aviary inherits from BaseSingleAgentAviary
+    """
+
     # Decorators
     def _logged(obj):
 
@@ -56,6 +60,9 @@ class CustomAviary(HoverAviary):
                     act=act
                     )
 
+    def _initReferencePath(self):
+        self.ReferencePath = ReferencePath(tuple(self.INIT_XYZS[0]), tuple(self._extractBaitPosition()))
+        self.ReferencePath.info()
 
     def _generatePillar(self, coords):
         x, y = coords
@@ -68,12 +75,6 @@ class CustomAviary(HoverAviary):
         self.PILLAR_DATA.append((x, y, id))
     
     def _addBait(self):
-        """
-        1. [x] Bait needs physical parameters - most likely will go with a simple cube, or a samurai XD 
-        2. [x] Bait needs a position computed with respect to the forest's geometry
-            2.1 [x] Bait will probably be positioned at the forest boundary + offset
-        3. [x] Bait needs to be registered
-        """
         x, y = self.forestProvider.baitCoordinates
         self.BAIT_ID = p.loadURDF(pkg_resources.resource_filename('gym_pybullet_drones', 'assets/bait.urdf'),
             [x, y, .025 / 2],

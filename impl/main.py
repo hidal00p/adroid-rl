@@ -1,5 +1,5 @@
 import numpy as np
-import time, signal,  sys
+import time, signal, sys
 
 from aviary.CustomAviary import CustomAviary
 from utils import ForestProvider
@@ -13,6 +13,9 @@ def run():
         gui=True,
         forestProvider=forestProvider
         )
+    env._initReferencePath()
+    
+    exit(0)
     env.agentInfo()
 
     # Define SIGINT handler
@@ -32,7 +35,7 @@ def run():
     signal.signal(signal.SIGINT, sigintHandler)
 
     # Define streaming flag
-    f_stream = False
+    f_stream = True
     if f_stream:
         initPlt()
     
@@ -80,7 +83,6 @@ def run():
         elapsed_time = count * sleep_time
         count += 1
         time.sleep(sleep_time)
-
 
 if __name__ == "__main__":
     run()
