@@ -1,21 +1,14 @@
 import numpy as np
 import time, signal, sys
 
-from aviary.CustomAviary import CustomAviary
+import aviary.utils as au
 from utils import ForestProvider
 from utils import closePlt, initPlt, rgbStream
 
-def run():
-    # Define env and forest provider
-    forestProvider = ForestProvider(fPoissonGrid=True, fDebug=True)
-    env = CustomAviary(
-        initial_xyzs=np.array([[0, 0, .15]]),
-        gui=True,
-        forestProvider=forestProvider
-        )
-    env._initReferencePath()
+def main():
+    env = au.getEnv()
     
-    exit(0)
+    env._initReferencePath()
     env.agentInfo()
 
     # Define SIGINT handler
@@ -85,4 +78,4 @@ def run():
         time.sleep(sleep_time)
 
 if __name__ == "__main__":
-    run()
+    main()
