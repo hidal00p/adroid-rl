@@ -63,7 +63,10 @@ class CustomAviary(HoverAviary):
     def _initReferencePath(self):
         self.ReferencePath = ReferencePath(tuple(self.INIT_XYZS[0]), tuple(self._extractBaitPosition()))
         self.ReferencePath.info()
-
+    
+    """
+    Section related to spawning obstacles
+    """
     def _generatePillar(self, coords):
         x, y = coords
         id = p.loadURDF(pkg_resources.resource_filename('gym_pybullet_drones', 'assets/column.urdf'),
@@ -82,6 +85,17 @@ class CustomAviary(HoverAviary):
             physicsClientId=self.CLIENT
         )
 
+    def _addObstacles(self):
+        # Add bait
+        self._addBait()
+
+        # Add forest
+        for root in self.forestProvider.forestGrid:
+            self._generatePillar(tuple(root))
+    
+    """
+    Section related to querying simulator for position and orientation of simulated objects
+    """
     def _getPosAndOrient(bodyId, clientId):
         pos, quat = p.getBasePositionAndOrientation(bodyId, clientId)
         rpy, orientationMatrix = p.getEulerFromQuaternion(quat), p.getMatrixFromQuaternion(quat)
@@ -93,15 +107,6 @@ class CustomAviary(HoverAviary):
         orientationMatrix = np.array([x, y, z]).T
         return (pos, rpy, orientationMatrix)
 
-    def _addObstacles(self):
-        # Add bait
-        self._addBait()
-
-        # Add forest
-        for root in self.forestProvider.forestGrid:
-            coords = (root[0], root[1])
-            self._generatePillar(coords)
-
     def _extractBaitPosition(self):
         pos, _, _ = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
         return np.array(pos)
@@ -109,6 +114,14 @@ class CustomAviary(HoverAviary):
     def _extractAgentPosition(self):
         pos, _, _ = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
         return np.array(pos)
+
+    def _extractBaitOrientationVector(self) -> OrientationVec:
+        _, _, orientationMatrix = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
+        return OrientationVec.fromCoordinatesNd(orientationMatrix.T[0])
+
+    def _extractAgentOrientationVector(self) -> OrientationVec:
+        _, _, orientationMatrix = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
+        return OrientationVec.fromCoordinatesNd(orientationMatrix.T[0])
     
     def computeBaitCompass(self) -> OrientationVec:
         posB = self._extractBaitPosition()
@@ -117,14 +130,9 @@ class CustomAviary(HoverAviary):
         # Create a bait compass
         return OrientationVec.fromCoordinatesNd(posB - posA)
     
-    def extractBaitOrientationVector(self) -> OrientationVec:
-        _, _, orientationMatrix = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
-        return OrientationVec.fromCoordinatesNd(orientationMatrix.T[0])
-
-    def extractAgentOrientationVector(self) -> OrientationVec:
-        _, _, orientationMatrix = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
-        return OrientationVec.fromCoordinatesNd(orientationMatrix.T[0])
-
+    """
+    Section related to logging info about simulated object
+    """
     @_logged("Bait")
     def baitInfo(self):
         pos, rpy, _ = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
