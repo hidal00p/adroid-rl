@@ -4,8 +4,6 @@ It is a simple script that fetches a particular function, finds its annontated v
 Test cases a priori do not accept arguments. They are run as is, all the neccessary information should be defined within the test case.
 """
 
-import aviary.utils as au
-
 TestCases = {}
 
 def testCase(testName = None):
@@ -15,8 +13,8 @@ def testCase(testName = None):
             TestCases[testName] = func
         else:
             raise RuntimeError(
-                f"Test case with name _{testName}_ already registered.\n"
-                f"A function registered previously is _{TestCases[testName].__name__}_.\n"
+                f"Function _{func.__name__}_ cannot be registered under case name _{testName}_ as it is already in use.\n"
+                f"A function _{TestCases[testName].__name__}_ was previously encountered among test case list.\n"
                 "Please provide a unique name and re-run the program!"
                 )
         
@@ -26,8 +24,26 @@ def testCase(testName = None):
 
 @testCase("env-creation")
 def testEnvCreation():
+    import aviary.utils as au
+    
     assert au.getEnv() != None
 
-@testCase("hello")
-def testEnvCreation():
-    print("Hello World!")
+@testCase("obstacle-detection")
+def testObstacleDetection():
+    import numpy as np
+    from agent.sensor import ObstacleSensor
+    import aviary.utils as au
+    from utils import TrigConsts
+
+    os = ObstacleSensor(
+        env = au.getEnv(
+            fGui=False,
+            initial_rpys=np.array([[0 * TrigConsts.DEG2RAD, 45 * TrigConsts.DEG2RAD, 0 * TrigConsts.DEG2RAD]]),
+            initial_xyzs=np.array([[-.3, -.15, 0.4]])
+            )
+        )
+    os._detectObstacles()
+
+@testCase("hello-world")
+def testHelloWorld():
+    print("Hello World")
