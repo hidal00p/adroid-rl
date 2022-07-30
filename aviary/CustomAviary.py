@@ -106,6 +106,14 @@ class CustomAviary(HoverAviary):
         
         orientationMatrix = np.array([x, y, z]).T
         return (pos, rpy, orientationMatrix)
+    
+    def _extractAgentOrientationPlane(self):
+        posA, _, orientationMatrix = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
+        
+        # Returns norm that describes the plane n (a, b, c), and offset point P (x0, y0, z0)
+        # which forms a plane a(x - x0) + b(y - y0) + c(z - z0) = 0,
+        # or ax + by + cz = d, where d = ax0 + by0 + cz0
+        return (orientationMatrix.T[2], posA)
 
     def _extractBaitPosition(self):
         pos, _, _ = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
@@ -114,10 +122,6 @@ class CustomAviary(HoverAviary):
     def _extractAgentPosition(self):
         pos, _, _ = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
         return np.array(pos)
-
-    def _extractBaitOrientationVector(self) -> OrientationVec:
-        _, _, orientationMatrix = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
-        return OrientationVec.fromCoordinatesNd(orientationMatrix.T[0])
 
     def _extractAgentOrientationVector(self) -> OrientationVec:
         _, _, orientationMatrix = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
@@ -135,8 +139,8 @@ class CustomAviary(HoverAviary):
     """
     @_logged("Bait")
     def baitInfo(self):
-        pos, rpy, _ = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
-        print(f"Position: {pos} Orientation: {rpy}")
+        pos, _, _ = CustomAviary._getPosAndOrient(self.BAIT_ID, self.CLIENT)
+        print(f"Position: {pos}")
         
     @_logged("Agent")
     def agentInfo(self):
