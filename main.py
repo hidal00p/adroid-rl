@@ -2,11 +2,10 @@ import numpy as np
 import time, signal, sys
 
 import aviary.utils as au
-from utils import ForestProvider
 from utils import closePlt, initPlt, rgbStream
 
 def main():
-    env = au.getEnv()
+    env = au.getEnv(fGui=True)
     
     env._initReferencePath()
     env.agentInfo()
