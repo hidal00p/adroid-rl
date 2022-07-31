@@ -3,6 +3,8 @@ Defines a heuristic for features that could be extracted from a trained convolut
 """
 
 import pybullet as p
+import numpy as np
+
 from aviary.CustomAviary import CustomAviary
 from utils import TrigConsts
 
@@ -11,10 +13,17 @@ class VisionParams:
     Configurable helper data strucutre that definies ObstacleSensor.class sensory params.
     Accuracy decay rate, vision cone range (in degrees), number of sensitive measurment segments.
     """
-    def __init__(self, visionAngle = 160, accuracyDecayRate = 0.8, nSegments = 8):
+
+    """
+    * visionAngle (degs) - breadth of vision field of the sensor
+    * nSegments (uint) - number of discrete rays that will be emmitted to gather measurments in the vision field
+
+    (Note that nSegments parameter has to be complient with neural network input layer)
+    """
+    def __init__(self, visionAngle = 160, nSegments = 20, depth = .4):
         self.visionAngle = visionAngle * TrigConsts.DEG2RAD
-        self.accuracyDecayRate = accuracyDecayRate
         self.nSegments = nSegments
+        self.depth = depth
 
 class ObstacleSensor():
     """
@@ -34,16 +43,57 @@ class ObstacleSensor():
         
         self.env = env
         self.visionParams = visionParams
-    
+
+    """
+    Computes a pencil of rays that get emmited to obtain data about obstacles.
+    Observation parameters are constructed with respect to agent's orientation, vision angle and number of vision segments.
+
+    Output: list of end coordiantes [[c_1], [c_2], ..., [c_nSegments]]
+    """
+    def _calculateRayPencil(self):
+        # [x. y] themselves form a vector space equivalent to [[1, 0].T, [0, 1].T]
+        # However, matrix formed by x, y stacked is a transformation matrix from local vector space to world R^3 coordinates
+        rayPencil = []
+        x, y, posA = self.env._extractAgentOrientationPlaneParams()
+        
+        # 2x3
+        transformMatrix = np.array(
+            [
+                x, 
+                y
+            ]
+        )
+        
+        step = self.visionParams.visionAngle / self.visionParams.nSegments
+        currentAngle = - self.visionParams.visionAngle / 2
+        for _ in range(self.visionParams.nSegments):
+            # perform computation at 
+            computationAngle = currentAngle + (step / 2)
+
+            # 1x2
+            visionRayMatrixLocal = np.array(
+                [
+                    np.cos(computationAngle), np.sin(computationAngle)
+                ]
+            )
+
+            # 1x3 visionRayMatrixLocal represented in the world frame coordinates
+            visionRayMatrixWorld = np.matmul(visionRayMatrixLocal, transformMatrix)
+            rayPencil.append(visionRayMatrixWorld)
+            
+            currentAngle = currentAngle + step
+        
+        return self.visionParams.depth * rayPencil + posA
+
+    """
+    Takes advantage of raytestBatch API exposed by pybullet physics engine
+    """
     def _detectObstacles(self):
         posA = self.env._extractAgentPosition()
-        orVecA = self.env._extractAgentOrientationVector()
-        obPosVec = self.env.PILLAR_DATA
+        rayPencil = self._calculateRayPencil()
 
-        # TODO: construct a sensor that operates within this plane in range [-alpha, alpha],
-        # where alpha = visionParams.visionAngle / 2, and is counted from orVecA as a zero radian axis
-        norm, shift = self.env._extractAgentOrientationPlane()
-        print(norm, shift)
+        # Implement rayBatchTest using posA and rayPencil
+
 
     """
     Returns an (1, self.visionParams.nSegment) vector of observations, that identify proximity to objects.

@@ -25,12 +25,24 @@ def testCase(testName = None):
 @testCase("env-creation")
 def testEnvCreation():
     import aviary.utils as au
-    
     assert au.getEnv() != None
+
+@testCase("calculate-ray-pencil")
+def testRayPencilCalculation():
+    from agent.sensor import ObstacleSensor
+    from utils import TrigConsts
+    import aviary.utils as au
+
+    os = ObstacleSensor(
+        env = au.getEnv(fGui=False)
+    )
+
+    print(os._calculateRayPencil())
 
 @testCase("obstacle-detection")
 def testObstacleDetection():
     import numpy as np
+
     from agent.sensor import ObstacleSensor
     import aviary.utils as au
     from utils import TrigConsts
