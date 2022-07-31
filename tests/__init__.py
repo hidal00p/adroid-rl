@@ -30,7 +30,6 @@ def testEnvCreation():
 @testCase("calculate-ray-pencil")
 def testRayPencilCalculation():
     from agent.sensor import ObstacleSensor
-    from utils import TrigConsts
     import aviary.utils as au
 
     os = ObstacleSensor(
@@ -41,20 +40,16 @@ def testRayPencilCalculation():
 
 @testCase("obstacle-detection")
 def testObstacleDetection():
-    import numpy as np
-
     from agent.sensor import ObstacleSensor
     import aviary.utils as au
-    from utils import TrigConsts
 
     os = ObstacleSensor(
-        env = au.getEnv(
-            fGui=False,
-            initial_rpys=np.array([[0 * TrigConsts.DEG2RAD, 45 * TrigConsts.DEG2RAD, 0 * TrigConsts.DEG2RAD]]),
-            initial_xyzs=np.array([[-.3, -.15, 0.4]])
-            )
-        )
-    os._detectObstacles()
+        env = au.getEnv(fGui=False)
+    )
+    
+    measurments = os.detectObstacles()
+    for m in measurments:
+        print(m)
 
 @testCase("hello-world")
 def testHelloWorld():

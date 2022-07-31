@@ -20,7 +20,7 @@ class VisionParams:
 
     (Note that nSegments parameter has to be complient with neural network input layer)
     """
-    def __init__(self, visionAngle = 160, nSegments = 20, depth = .4):
+    def __init__(self, visionAngle = 160, nSegments = 20, depth = .65):
         self.visionAngle = visionAngle * TrigConsts.DEG2RAD
         self.nSegments = nSegments
         self.depth = depth
@@ -79,25 +79,27 @@ class ObstacleSensor():
 
             # 1x3 visionRayMatrixLocal represented in the world frame coordinates
             visionRayMatrixWorld = np.matmul(visionRayMatrixLocal, transformMatrix)
-            rayPencil.append(visionRayMatrixWorld)
+            rayPencil.append(
+                (self.visionParams.depth * visionRayMatrixWorld) + posA
+            )
             
             currentAngle = currentAngle + step
         
-        return self.visionParams.depth * rayPencil + posA
+        return rayPencil
 
     """
     Takes advantage of raytestBatch API exposed by pybullet physics engine
     """
-    def _detectObstacles(self):
+    def detectObstacles(self):
         posA = self.env._extractAgentPosition()
         rayPencil = self._calculateRayPencil()
+        measurments = p.rayTestBatch(
+            rayFromPositions = [posA for _ in rayPencil],
+            rayToPositions = rayPencil
+        )
 
-        # Implement rayBatchTest using posA and rayPencil
-
-
-    """
-    Returns an (1, self.visionParams.nSegment) vector of observations, that identify proximity to objects.
-    """
-    def computeMeasurement(self):
-        pass
-        
+        preprocessedMeasurments = []
+        for obstacleId, _, hitFraction, _, _ in measurments:
+            hitFraction = 0 if obstacleId == -1 else hitFraction
+            preprocessedMeasurments.append(hitFraction)
+        return preprocessedMeasurments
