@@ -5,7 +5,7 @@ import pybullet as p
 from gym_pybullet_drones.envs.single_agent_rl import HoverAviary
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import ActionType, ObservationType
-from utils import ForestProvider, OrientationVec, ReferencePath
+from utils import ForestProvider, OrientationVec
 
 class CustomAviary(HoverAviary):
     
@@ -60,10 +60,6 @@ class CustomAviary(HoverAviary):
                     act=act
                     )
 
-    def _initReferencePath(self):
-        self.ReferencePath = ReferencePath(tuple(self.INIT_XYZS[0]), tuple(self._extractBaitPosition()))
-        self.ReferencePath.info()
-    
     """
     Section related to spawning obstacles
     """

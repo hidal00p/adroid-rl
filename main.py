@@ -6,8 +6,6 @@ from utils import closePlt, initPlt, rgbStream
 
 def main():
     env = au.getEnv(fGui=True)
-    
-    env._initReferencePath()
     env.agentInfo()
 
     # Define SIGINT handler
