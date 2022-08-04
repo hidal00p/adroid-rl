@@ -82,7 +82,7 @@ class ObstacleSensor():
             # appends a tuple of visionRayMatrixLocal scaled to sensor range
             # and angle of detection
             rayPencil.append(
-                ( (visionRayMatrixWorld * self.visionParams.range) + posA, currentAngle )
+                (visionRayMatrixWorld * self.visionParams.range) + posA
             )
             
             currentAngle = currentAngle + step
@@ -102,17 +102,14 @@ class ObstacleSensor():
         
         measurments = p.rayTestBatch(
             rayFromPositions = [posA for _ in rayPencil],
-            rayToPositions = [rayFinalCoord for rayFinalCoord, _ in rayPencil]
+            rayToPositions = rayPencil
         )
 
-        i = 0
         self.lastRayReading = []
         for obstacleId, _, _, hitPos, _ in measurments:
             # Compute a hit distance in agent's reference frame
             hitDistance = -1 if obstacleId == -1 else np.linalg.norm(np.array(list(hitPos)) - np.array(posA))
-            _, hitAngle = rayPencil[i]
-            self.lastRayReading.append([hitDistance, hitAngle])
-            i += 1
+            self.lastRayReading.append(hitDistance)
         
         return self.lastRayReading
     
@@ -120,19 +117,17 @@ class ObstacleSensor():
     Returns flattened vector ready for usage in NN input layer
     """
     def getReadyReadings(self):
-        return np.array(self._detectObstacles()).flatten()
+        return np.array(self._detectObstacles())
 
     def observationSpace(self):
-        minAngle = -self.visionParams.visionAngle / 2
-        maxAngle = -1 * minAngle
         minDistance = -1.0 # -1 represents absense of obstacles in the visionParams.range
         maxDistance = self.visionParams.range
 
-        minObservationVector = [[minDistance, minAngle] for _ in range(self.visionParams.nSegments)]
-        maxObservationVector = [[maxDistance, maxAngle] for _ in range(self.visionParams.nSegments)]
+        minObservationVector = np.full((self.visionParams.nSegments, ), minDistance)
+        maxObservationVector = np.full((self.visionParams.nSegments, ), maxDistance)
 
         return spaces.Box(
-            low=np.array(minObservationVector).flatten(),
-            high=np.array(maxObservationVector).flatten(),
+            low=minObservationVector,
+            high=maxObservationVector,
             dtype=np.float32
         )

@@ -15,10 +15,21 @@ class ExtendedObservationType(Enum):
     LIDAR = "lidar" # Observation type to accomodate for obstacle awareness. Dimension is based on agent.sensor.ObstacleSensor.detectObstacles
 
 class CustomAviary(BaseSingleAgentAviary):
-    
+    ABSOLUTE_PENALTY = -25
     """
     Custom aviary inherits from BaseSingleAgentAviary
     """
+
+    def _weighted(weight):
+        
+        def __weighted(func):
+
+            def weighted(self):
+                return weight * func(self)
+            
+            return weighted
+        
+        return __weighted
 
     # Decorators
     def _logged(obj):
@@ -51,6 +62,7 @@ class CustomAviary(BaseSingleAgentAviary):
                  act: ActionType=ActionType.VEL,
                  visionParams: VisionParams=VisionParams(),
                  criticalDistance: float = .075, # if critical distance is too small float32 may overflow
+                 fTimeComponent: bool = False,
                  fDebug: bool = False
                 ):
                  """
@@ -65,6 +77,9 @@ class CustomAviary(BaseSingleAgentAviary):
                  self.criticalDistance = criticalDistance
                  self.finito = False
                  self.fDebug = fDebug
+                 self.fTimeComponent = fTimeComponent
+                 self.EPISODE_LEN_SEC = 10
+                 
                  if (self.fDebug):
                     self.rewardBuffer = RewardBuffer()
 
@@ -175,38 +190,34 @@ class CustomAviary(BaseSingleAgentAviary):
     """
     Section related to BaseAviary API and gym API
     """
+    def _baitCompassObservationSpace(self):
+        return spaces.Box(
+            low=np.array([-1]),
+            high=np.array([1]),
+            dtype=np.float32
+        )
+
     def _observationSpace(self):
         kinematicObservationSpace = super()._observationSpace()
         sensorObservationSpace = self.obstacleSensor.observationSpace()
+        baitCompassObservationSpace = self._baitCompassObservationSpace()
 
         return spaces.Box(
-            low=np.concatenate((kinematicObservationSpace.low, sensorObservationSpace.low), axis=0),
-            high=np.concatenate((kinematicObservationSpace.high, sensorObservationSpace.high), axis=0),
+            low=np.concatenate((kinematicObservationSpace.low, sensorObservationSpace.low, baitCompassObservationSpace.low), axis=0),
+            high=np.concatenate((kinematicObservationSpace.high, sensorObservationSpace.high, baitCompassObservationSpace.high), axis=0),
             dtype=np.float32
         )
     
     def _computeObs(self):
         kinObservation = super()._computeObs()
         sensorObservation = self.obstacleSensor.getReadyReadings()
+        baitCompass = np.array([self._extractAgentOrientationVector().correlateTo(self._computeBaitCompass())])
         
-        return np.concatenate((kinObservation, sensorObservation), axis=0)
+        return np.concatenate((kinObservation, sensorObservation, baitCompass), axis=0)
     
     def _clipAndNormalizeState(self,
                             state
                             ):
-        """Normalizes a drone's state to the [-1,1] range.
-
-        Parameters
-        ----------
-        state : ndarray
-            (20,)-shaped array of floats containing the non-normalized state of a single drone.
-
-        Returns
-        -------
-        ndarray
-            (20,)-shaped array of floats containing the normalized state of a single drone.
-
-        """
         MAX_LIN_VEL_XY = 3 
         MAX_LIN_VEL_Z = 1
 
@@ -242,40 +253,58 @@ class CustomAviary(BaseSingleAgentAviary):
 
         return norm_and_clipped
     
+    def _getTimeRewardMultiplier(self):
+        # Reward mutation that comes from time spent on an episode
+        # essentially the goal is, the longer the worse it is
+        pass
+
+    @_weighted(2.0)
     def _getBaitCompassRewardComponent(self):
+        
         baitCompass = self._computeBaitCompass()
         agentOrientation = self._extractAgentOrientationVector()
-        
         colinearParam = agentOrientation.correlateTo(baitCompass) # values in [-1, 1]
-        weight = 2.0
 
-        return weight * colinearParam # value in [-weight, weight]
+        return colinearParam
+    
+    @_weighted(-1.5)
+    def _getBaitDistanceRewardComponent(self):
+        
+        posA = self._extractAgentPosition()
+        posB = self._extractBaitPosition()
 
+        distanceParam = np.linalg.norm(posB - posA)
+        
+        return distanceParam
+    
+    def _getTotalBaitRewardComponent(self):
+        return self._getBaitCompassRewardComponent() + self._getBaitDistanceRewardComponent()
+
+    @_weighted(3.0)
     def _getObstacleProximityRewardComponent(self):
         proximityParam = 0
-        weight = 3
-        # check critical proximity to obstacles, if any -> -10
+        # check critical proximity to obstacles, if any -> CustomAviary.ABSOLUTE_PENALTY
         # and compute reward based on self.obstacleSensor.lastRayReading done in one loop not to waste CPU cycles
-        for dist, _ in self.obstacleSensor.lastRayReading:
+        for dist in self.obstacleSensor.lastRayReading:
             if dist == -1 : continue
             
             if dist < self.criticalDistance:
                 self.finito = True
-                return -10
+                return CustomAviary.ABSOLUTE_PENALTY
             
             proximityParam += 1. / dist
         
         # squeezes proximity parameter to [-1, 1] range
         # proximityParam -> inf, return -> -1       this idenfifies very close proximity to obstacles
         # proximityParam -> 0, return -> 1          this idenfifies absence proximity to obstacles
-        return weight * (( 2. / (1 + np.exp(proximityParam)) ) - 1)
+        return ( 2. / (1 + np.exp(proximityParam)) ) - 1
 
     def _computeReward(self):
         # At each reward call agent should obtain a reward within [-5, 5], where -10 is yielded for crashing or getting out of bounds
         # Boundaries are dictated by the forestProvider
 
         # compute colinearity with bait component
-        baitComponent = self._getBaitCompassRewardComponent()
+        baitComponent = self._getTotalBaitRewardComponent()
 
         # check withn boudaries, if outside -> -10
         posA = self._extractAgentPosition()
@@ -290,14 +319,16 @@ class CustomAviary(BaseSingleAgentAviary):
             (zA >= zMax or zA <= zMin)
         ):
             self.finito = True
-            return -10 + baitComponent
+            return CustomAviary.ABSOLUTE_PENALTY + baitComponent
         
         # compute obstacle proximity component
         obstacleProximityComponent = self._getObstacleProximityRewardComponent()
         if (self.fDebug):
             self.rewardBuffer.append((baitComponent, obstacleProximityComponent))
         
-        return baitComponent + obstacleProximityComponent
+        totalReward = baitComponent + obstacleProximityComponent # TODO: add time correction from _getTimeRewardMultiplier
+
+        return totalReward
     
     def rewardBufferInfo(self):
         assert self.fDebug

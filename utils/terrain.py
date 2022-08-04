@@ -195,7 +195,7 @@ class ForestProvider:
         
         # Returns boundary values ((x_min, x_max), (y_min, y_max), (z_min, z_max))
         baitX, _ = self.baitCoordinates
-        return ((self.x_offset - .3, (1 + self.baitComfortInterval) + baitX), (-self.forestSize/2, self.forestSize/2), (0.0, .39))
+        return ((self.x_offset - .3, (1 + self.baitComfortInterval) + baitX), (-self.forestSize/2, self.forestSize/2), (0.05, .25))
 
     def _generatePoissonForest(self):
         y_offset = -self.forestSize / 2

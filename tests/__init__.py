@@ -106,7 +106,7 @@ def testCustomAviaryObservationSpace():
         i += 1
         if i % 250 == 0:
             print(f"LOG[{i}]:\n"
-                f"{np.flip(env.obstacleSensor.getReadyReadings().reshape((env.obstacleSensor.visionParams.nSegments, 2)), axis=0)}\n"
+                f"{np.flip(env.obstacleSensor.getReadyReadings().reshape((env.obstacleSensor.visionParams.nSegments, 1)), axis=0)}\n"
             )
 
 @testCase("compute-reward")
@@ -119,7 +119,7 @@ def testRewardComputation():
         fGui=True,
         fDebug=True,
         visionParams=VisionParams(nSegments=121, visionAngle=120),
-        initial_xyzs=np.array([[1.85, 0, .15]])
+        initial_xyzs=np.array([[1.82, 0, .15]])
         # initial_rpys=np.array([[0, 0, 0]])
     )
 
@@ -133,6 +133,41 @@ def testRewardComputation():
         
         if done:
             env.reset()
+
+@testCase("test-model")
+def testTrainedModel():
+    from stable_baselines3 import SAC
+
+    from aviary.utils import getEnv
+    from agent.sensor import VisionParams
+    import utils.file as uf
+    
+    env = getEnv(
+        fGui=True,
+        fDebug=False,
+        visionParams=VisionParams(
+            visionAngle=110,
+            nSegments=110,
+            range=.4
+        )
+    )
+
+    modelFile = "final"
+    modelFolder = "110deg-110-256-256-128-64"
+    model = SAC.load(f"models/{modelFolder}/{modelFile}")
+    obs = env.reset()
+    
+    while True:
+        action, _ = model.predict(obs)
+        obs, reward, done, _ = env.step(action)
+        print(f"Reward at: {reward} -> {done}")
+
+        if done:
+            break
+    
+    env.close()
+
+
 
 @testCase("hello-world")
 def testHelloWorld():
