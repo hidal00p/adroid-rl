@@ -9,7 +9,7 @@ from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import ActionType, ObservationType
 from agent.sensor import ObstacleSensor, VisionParams
 
-from utils import ForestProvider, OrientationVec
+from utils import ForestProvider, OrientationVec, RewardBuffer
 
 class ExtendedObservationType(Enum):
     LIDAR = "lidar" # Observation type to accomodate for obstacle awareness. Dimension is based on agent.sensor.ObstacleSensor.detectObstacles
@@ -49,7 +49,9 @@ class CustomAviary(BaseSingleAgentAviary):
                  gui=False,
                  record=False,
                  act: ActionType=ActionType.VEL,
-                 visionParams: VisionParams=VisionParams()
+                 visionParams: VisionParams=VisionParams(),
+                 criticalDistance: float = .075, # if critical distance is too small float32 may overflow
+                 fDebug: bool = False
                 ):
                  """
                  CustomAviary class operates an agent, which attempts to navigate through a forest of obstacles.
@@ -59,7 +61,12 @@ class CustomAviary(BaseSingleAgentAviary):
 
                  self.PILLAR_DATA : list((float, float, int)) = [] # tuple of format (x_coord, y_coord, pybullet_id)
                  self.forestProvider = forestProvider
-                 self.ObstacleSensor = ObstacleSensor(self, visionParams=visionParams)
+                 self.obstacleSensor = ObstacleSensor(self, visionParams=visionParams)
+                 self.criticalDistance = criticalDistance
+                 self.finito = False
+                 self.fDebug = fDebug
+                 if (self.fDebug):
+                    self.rewardBuffer = RewardBuffer()
 
                  super().__init__(
                     drone_model=drone_model,
@@ -76,13 +83,16 @@ class CustomAviary(BaseSingleAgentAviary):
     """
     Section related to spawning obstacles
     """
+    def _resetForest(self):
+        self.forestProvider._generatePoissonForest()
+
     def _generatePillar(self, coords):
         x, y = coords
         id = p.loadURDF(pkg_resources.resource_filename('gym_pybullet_drones', 'assets/column.urdf'),
             [x, y, .4 / 2],
             p.getQuaternionFromEuler([0, 0, 0]),
             physicsClientId=self.CLIENT
-            )
+        )
         
         self.PILLAR_DATA.append((x, y, id))
     
@@ -136,7 +146,7 @@ class CustomAviary(BaseSingleAgentAviary):
         _, _, orientationMatrix = CustomAviary._getPosAndOrient(self.DRONE_IDS[0], self.CLIENT)
         return OrientationVec.fromCoordinatesNd(orientationMatrix.T[0])
     
-    def computeBaitCompass(self) -> OrientationVec:
+    def _computeBaitCompass(self) -> OrientationVec:
         posB = self._extractBaitPosition()
         posA = self._extractAgentPosition()
         
@@ -167,7 +177,7 @@ class CustomAviary(BaseSingleAgentAviary):
     """
     def _observationSpace(self):
         kinematicObservationSpace = super()._observationSpace()
-        sensorObservationSpace = self.ObstacleSensor.observationSpace()
+        sensorObservationSpace = self.obstacleSensor.observationSpace()
 
         return spaces.Box(
             low=np.concatenate((kinematicObservationSpace.low, sensorObservationSpace.low), axis=0),
@@ -177,7 +187,7 @@ class CustomAviary(BaseSingleAgentAviary):
     
     def _computeObs(self):
         kinObservation = super()._computeObs()
-        sensorObservation = self.ObstacleSensor.getReadyReadings()
+        sensorObservation = self.obstacleSensor.getReadyReadings()
         
         return np.concatenate((kinObservation, sensorObservation), axis=0)
     
@@ -231,3 +241,78 @@ class CustomAviary(BaseSingleAgentAviary):
                                         ]).reshape(20,)
 
         return norm_and_clipped
+    
+    def _getBaitCompassRewardComponent(self):
+        baitCompass = self._computeBaitCompass()
+        agentOrientation = self._extractAgentOrientationVector()
+        
+        colinearParam = agentOrientation.correlateTo(baitCompass) # values in [-1, 1]
+        weight = 2.0
+
+        return weight * colinearParam # value in [-weight, weight]
+
+    def _getObstacleProximityRewardComponent(self):
+        proximityParam = 0
+        weight = 3
+        # check critical proximity to obstacles, if any -> -10
+        # and compute reward based on self.obstacleSensor.lastRayReading done in one loop not to waste CPU cycles
+        for dist, _ in self.obstacleSensor.lastRayReading:
+            if dist == -1 : continue
+            
+            if dist < self.criticalDistance:
+                self.finito = True
+                return -10
+            
+            proximityParam += 1. / dist
+        
+        # squeezes proximity parameter to [-1, 1] range
+        # proximityParam -> inf, return -> -1       this idenfifies very close proximity to obstacles
+        # proximityParam -> 0, return -> 1          this idenfifies absence proximity to obstacles
+        return weight * (( 2. / (1 + np.exp(proximityParam)) ) - 1)
+
+    def _computeReward(self):
+        # At each reward call agent should obtain a reward within [-5, 5], where -10 is yielded for crashing or getting out of bounds
+        # Boundaries are dictated by the forestProvider
+
+        # compute colinearity with bait component
+        baitComponent = self._getBaitCompassRewardComponent()
+
+        # check withn boudaries, if outside -> -10
+        posA = self._extractAgentPosition()
+        xA, yA, zA = posA[0], posA[1], posA[2]
+        xBoundary, yBoundary, zBoundary = self.forestProvider.getPoissonForrestGeometry()
+        xMin, xMax = xBoundary
+        yMin, yMax = yBoundary
+        zMin, zMax = zBoundary
+        if (
+            (xA >= xMax or xA <= xMin) or
+            (yA >= yMax or yA <= yMin) or
+            (zA >= zMax or zA <= zMin)
+        ):
+            self.finito = True
+            return -10 + baitComponent
+        
+        # compute obstacle proximity component
+        obstacleProximityComponent = self._getObstacleProximityRewardComponent()
+        if (self.fDebug):
+            self.rewardBuffer.append((baitComponent, obstacleProximityComponent))
+        
+        return baitComponent + obstacleProximityComponent
+    
+    def rewardBufferInfo(self):
+        assert self.fDebug
+        self.rewardBuffer.info()
+
+    def _computeDone(self):
+        # At each reward call agent should obtain a reward within [-5, 5], where -10 is yielded for crashing
+        return self.finito
+    
+    def _computeInfo(self):
+        # At each reward call agent should obtain a reward within [-5, 5], where -10 is yielded for crashing
+        return {"info": "Test run"}
+    
+    def reset(self):
+        self.finito = False
+        self._resetForest()
+        return super().reset()
+

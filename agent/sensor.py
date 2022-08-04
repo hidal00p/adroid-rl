@@ -41,6 +41,7 @@ class ObstacleSensor():
     def __init__(self, env : gym.Env, visionParams = VisionParams()):
         self.env = env
         self.visionParams = visionParams
+        self.lastRayReading = []
 
     """
     Computes a pencil of rays that get emmited to obtain data about obstacles.
@@ -81,7 +82,7 @@ class ObstacleSensor():
             # appends a tuple of visionRayMatrixLocal scaled to sensor range
             # and angle of detection
             rayPencil.append(
-                ( (self.visionParams.range * visionRayMatrixWorld) + posA, currentAngle )
+                ( (visionRayMatrixWorld * self.visionParams.range) + posA, currentAngle )
             )
             
             currentAngle = currentAngle + step
@@ -93,7 +94,7 @@ class ObstacleSensor():
         y = np.array(y)
 
     """
-    Takes advantage of raytestBatch API exposed by pybullet physics engine
+    Takes advantage of rayTestBatch API exposed by pybullet physics engine
     """
     def _detectObstacles(self):
         posA = self.env._extractAgentPosition()
@@ -105,18 +106,18 @@ class ObstacleSensor():
         )
 
         i = 0
-        postprocessedMeasurments = []
-        for _, _, _, hitPos, _ in measurments:
+        self.lastRayReading = []
+        for obstacleId, _, _, hitPos, _ in measurments:
             # Compute a hit distance in agent's reference frame
-            hitDistance =  np.linalg.norm(np.array(list(hitPos)) - np.array(posA))
+            hitDistance = -1 if obstacleId == -1 else np.linalg.norm(np.array(list(hitPos)) - np.array(posA))
             _, hitAngle = rayPencil[i]
-            postprocessedMeasurments.append([hitDistance, hitAngle])
+            self.lastRayReading.append([hitDistance, hitAngle])
             i += 1
-            
-        return postprocessedMeasurments
+        
+        return self.lastRayReading
     
     """
-    Flattened vector ready for usage in NN input layer
+    Returns flattened vector ready for usage in NN input layer
     """
     def getReadyReadings(self):
         return np.array(self._detectObstacles()).flatten()
@@ -124,7 +125,7 @@ class ObstacleSensor():
     def observationSpace(self):
         minAngle = -self.visionParams.visionAngle / 2
         maxAngle = -1 * minAngle
-        minDistance = 0.0
+        minDistance = -1.0 # -1 represents absense of obstacles in the visionParams.range
         maxDistance = self.visionParams.range
 
         minObservationVector = [[minDistance, minAngle] for _ in range(self.visionParams.nSegments)]
