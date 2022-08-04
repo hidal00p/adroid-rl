@@ -27,6 +27,15 @@ def testEnvCreation():
     import aviary.utils as au
     assert au.getEnv() != None
 
+@testCase("agent-orientation")
+def testAgentOrientation():
+    from agent.sensor import VisionParams
+    import aviary.utils as au
+
+    env = au.getEnv(
+        fGui=False, visionParams=VisionParams(nSegments=12)
+    )
+
 @testCase("calculate-ray-pencil")
 def testRayPencilCalculation():
     from agent.sensor import ObstacleSensor
@@ -47,7 +56,7 @@ def testObstacleDetection():
         env = au.getEnv(fGui=False)
     )
     
-    obs = os.detectObstacles()
+    obs = os._detectObstacles()
 
     for ob in obs:
         print(ob)
@@ -67,7 +76,7 @@ def testObstacleSensorObservationSpace():
         fGui=False, visionParams=VisionParams(nSegments=12)
     )
 
-    print(env.ObstacleSensor.observationSpace())
+    print(env.obstacleSensor.observationSpace())
 
 @testCase("custom-aviary-obs-space")
 def testCustomAviaryObservationSpace():
@@ -82,15 +91,48 @@ def testCustomAviaryObservationSpace():
 
 @testCase("compute-custom-obs")
 def testCustomAviaryObservationSpace():
+    import numpy as np
     from agent.sensor import VisionParams
     import aviary.utils as au
 
     env = au.getEnv(
-        fGui=False, visionParams=VisionParams(nSegments=12)
+        fGui=True, 
+        visionParams=VisionParams(nSegments=33, visionAngle=60, range=.35)
     )
-    
-    print(env._computeObs())
 
+    i = 0
+    while True:
+        env.step(np.zeros((4,)))
+        i += 1
+        if i % 250 == 0:
+            print(f"LOG[{i}]:\n"
+                f"{np.flip(env.obstacleSensor.getReadyReadings().reshape((env.obstacleSensor.visionParams.nSegments, 2)), axis=0)}\n"
+            )
+
+@testCase("compute-reward")
+def testRewardComputation():
+    from agent.sensor import VisionParams
+    import aviary.utils as au
+    import  numpy as np
+
+    env = au.getEnv(
+        fGui=True,
+        fDebug=True,
+        visionParams=VisionParams(nSegments=121, visionAngle=120),
+        initial_xyzs=np.array([[1.85, 0, .15]])
+        # initial_rpys=np.array([[0, 0, 0]])
+    )
+
+    i = 0
+    while True:
+        _, reward, done, _ = env.step(np.zeros((4,)))
+        i += 1
+        if i % 250 == 0:
+            print(f"Reward at {i}: {reward} -> {done}")
+            env.rewardBufferInfo()
+        
+        if done:
+            env.reset()
 
 @testCase("hello-world")
 def testHelloWorld():
