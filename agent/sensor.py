@@ -20,10 +20,10 @@ class VisionParams:
 
     (Note that nSegments parameter has to be complient with neural network input layer)
     """
-    def __init__(self, visionAngle = 160, nSegments = 20, depth = .65):
+    def __init__(self, visionAngle = 160, nSegments = 20, range = .65):
         self.visionAngle = visionAngle * TrigConsts.DEG2RAD
         self.nSegments = nSegments
-        self.depth = depth
+        self.range = range
 
 class ObstacleSensor():
     """
@@ -79,13 +79,20 @@ class ObstacleSensor():
 
             # 1x3 visionRayMatrixLocal represented in the world frame coordinates
             visionRayMatrixWorld = np.matmul(visionRayMatrixLocal, transformMatrix)
+            
+            # appends a tuple of visionRayMatrixLocal scaled to sensor range
+            # and angle of detection
             rayPencil.append(
-                (self.visionParams.depth * visionRayMatrixWorld) + posA
+                ( (self.visionParams.range * visionRayMatrixWorld) + posA, currentAngle )
             )
             
             currentAngle = currentAngle + step
         
         return rayPencil
+    
+    def _computeDitance(self, x, y):
+        x = np.array(x)
+        y = np.array(y)
 
     """
     Takes advantage of raytestBatch API exposed by pybullet physics engine
@@ -93,13 +100,19 @@ class ObstacleSensor():
     def detectObstacles(self):
         posA = self.env._extractAgentPosition()
         rayPencil = self._calculateRayPencil()
+        
         measurments = p.rayTestBatch(
             rayFromPositions = [posA for _ in rayPencil],
-            rayToPositions = rayPencil
+            rayToPositions = [rayFinalCoord for rayFinalCoord, _ in rayPencil]
         )
 
-        preprocessedMeasurments = []
-        for obstacleId, _, hitFraction, _, _ in measurments:
-            hitFraction = 0 if obstacleId == -1 else hitFraction
-            preprocessedMeasurments.append(hitFraction)
-        return preprocessedMeasurments
+        i = 0
+        postprocessedMeasurments = []
+        for _, _, _, hitPos, _ in measurments:
+            # Compute a hit distance in agent's reference frame
+            hitDistance =  np.linalg.norm(np.array(list(hitPos)) - np.array(posA))
+            _, hitAngle = rayPencil[i]
+            postprocessedMeasurments.append([hitDistance, hitAngle])
+            i += 1
+            
+        return postprocessedMeasurments

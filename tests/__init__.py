@@ -47,9 +47,10 @@ def testObstacleDetection():
         env = au.getEnv(fGui=False)
     )
     
-    measurments = os.detectObstacles()
-    for m in measurments:
-        print(m)
+    obs = os.detectObstacles()
+
+    for ob in obs:
+        print(ob)
 
 @testCase("hello-world")
 def testHelloWorld():
