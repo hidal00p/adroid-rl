@@ -163,10 +163,24 @@ class ForestProvider:
     It provides client code with a map to be used.
     """
 
-    def __init__(self, fPoissonGrid = False, fDebug = False):
+    def __init__(
+        self, 
+        fPoissonGrid = False, 
+        fDebug = False,
+        # PoissonForestParams
+        forestSize = 1.6, 
+        densityParameter = .3, 
+        x_offset = .2
+    ):
         self.forestGrid = []
         self.baitComfortInterval = .05
+        self.fPoissonGrid = fPoissonGrid
+
         if fPoissonGrid:
+            self.forestSize = forestSize
+            self.densityParameter = densityParameter
+            self.x_offset = x_offset
+
             self._generatePoissonForest()
         else:
             self._generateCircularForest()
@@ -174,23 +188,27 @@ class ForestProvider:
         assert len(self.forestGrid) != 0 and self.baitCoordinates != None, "Forest and/or bait configured incorrectly"
         if fDebug:
             print(f"[DEBUG INFO FOR {__class__}]:\nforestGrid: {self.forestGrid}\nbaitCoordinates: {self.baitCoordinates}")
+
+    def getPoissonForrestGeometry(self):
+        if not self.fPoissonGrid:
+            raise RuntimeError("Accessing method that is only available for Poisson grid")
         
+        # Returns boundary values ((x_min, x_max), (y_min, y_max), (z_min, z_max))
+        baitX, _ = self.baitCoordinates
+        return ((self.x_offset - .3, (1 + self.baitComfortInterval) + baitX), (-self.forestSize/2, self.forestSize/2), (0.0, .39))
 
     def _generatePoissonForest(self):
-        size = 1.6
-        sep = .25
-        x_offset = .2
-        y_offset = -size / 2
+        y_offset = -self.forestSize / 2
         
         p = Poisson2D(
-            size = size, 
-            sep = sep,
-            offSetPair = (x_offset, y_offset),
+            size = self.forestSize, 
+            sep = self.densityParameter,
+            offSetPair = (self.x_offset, y_offset),
             fDebug = False
         )
 
         self.forestGrid = p.generate().get()
-        self.baitCoordinates = ((1 + self.baitComfortInterval) * (size + x_offset), 0)
+        self.baitCoordinates = ((1 + self.baitComfortInterval) * (self.forestSize + self.x_offset), 0)
     
     def _generateCircularForest(self):
         numPillars = 10
