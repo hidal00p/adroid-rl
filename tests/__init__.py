@@ -51,6 +51,46 @@ def testObstacleDetection():
 
     for ob in obs:
         print(ob)
+    
+@testCase("custom-obs-type")
+def testCustomObservationTypePolymorphism():
+    from aviary.CustomAviary import ExtendedObservationType
+    for obsType in ExtendedObservationType:
+        print(obsType.value)
+
+@testCase("obstacle-sensor-obs-space")
+def testObstacleSensorObservationSpace():
+    from agent.sensor import VisionParams
+    import aviary.utils as au
+
+    env = au.getEnv(
+        fGui=False, visionParams=VisionParams(nSegments=12)
+    )
+
+    print(env.ObstacleSensor.observationSpace())
+
+@testCase("custom-aviary-obs-space")
+def testCustomAviaryObservationSpace():
+    from agent.sensor import VisionParams
+    import aviary.utils as au
+
+    env = au.getEnv(
+        fGui=False, visionParams=VisionParams(nSegments=12)
+    )
+    
+    print(env._observationSpace())
+
+@testCase("compute-custom-obs")
+def testCustomAviaryObservationSpace():
+    from agent.sensor import VisionParams
+    import aviary.utils as au
+
+    env = au.getEnv(
+        fGui=False, visionParams=VisionParams(nSegments=12)
+    )
+    
+    print(env._computeObs())
+
 
 @testCase("hello-world")
 def testHelloWorld():

@@ -2,10 +2,11 @@
 Defines a heuristic for features that could be extracted from a trained convolutional network.
 """
 
+import gym
+from gym import spaces
 import pybullet as p
 import numpy as np
 
-from aviary.CustomAviary import CustomAviary
 from utils import TrigConsts
 
 class VisionParams:
@@ -37,10 +38,7 @@ class ObstacleSensor():
     * env - a configured CustomAviary with obstacle forest and agent
     * visionParams - VisionParams.class instance
     """
-    def __init__(self, env : CustomAviary, visionParams = VisionParams()):
-        
-        assert isinstance(env, CustomAviary)
-        
+    def __init__(self, env : gym.Env, visionParams = VisionParams()):
         self.env = env
         self.visionParams = visionParams
 
@@ -97,7 +95,7 @@ class ObstacleSensor():
     """
     Takes advantage of raytestBatch API exposed by pybullet physics engine
     """
-    def detectObstacles(self):
+    def _detectObstacles(self):
         posA = self.env._extractAgentPosition()
         rayPencil = self._calculateRayPencil()
         
@@ -116,3 +114,24 @@ class ObstacleSensor():
             i += 1
             
         return postprocessedMeasurments
+    
+    """
+    Flattened vector ready for usage in NN input layer
+    """
+    def getReadyReadings(self):
+        return np.array(self._detectObstacles()).flatten()
+
+    def observationSpace(self):
+        minAngle = -self.visionParams.visionAngle / 2
+        maxAngle = -1 * minAngle
+        minDistance = 0.0
+        maxDistance = self.visionParams.range
+
+        minObservationVector = [[minDistance, minAngle] for _ in range(self.visionParams.nSegments)]
+        maxObservationVector = [[maxDistance, maxAngle] for _ in range(self.visionParams.nSegments)]
+
+        return spaces.Box(
+            low=np.array(minObservationVector).flatten(),
+            high=np.array(maxObservationVector).flatten(),
+            dtype=np.float32
+        )
