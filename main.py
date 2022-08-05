@@ -10,6 +10,10 @@ from agent.sensor import VisionParams
 from utils import ForestProvider
 import utils.file as uf
 
+# Serves to help identify between models run according to separate ideas
+# it also helps with marking processes
+SIGNATURE = "regular"
+
 class TrainingConfig():
     def __init__(
         self,
@@ -33,15 +37,14 @@ class TrainingConfig():
 def run():
     traingSetting = [
         TrainingConfig(
-            netArch=[384, 128, 128, 64],
+            netArch=[448, 320, 64],
             visionAngle=120,
             nSegments=121,
             evalFreq=1000,
             totalSteps=200_000,
-            activationFn=("leaky_relu", torch.nn.LeakyReLU)
+            activationFn=("relu", torch.nn.ReLU)
         )
     ]
-
     for trainingConfig in traingSetting:
         trainSac(trainingConfig)
 
@@ -92,7 +95,8 @@ def trainSac(trainingConfig: TrainingConfig):
         seed = 0
     )
 
-    path = f"models/{uf.getPathFromModelParams(netArch, visionAngle, nSegments, totalSteps, activationName)}"
+    global SIGNATURE
+    path = f"models/{uf.getPathFromModelParams(SIGNATURE, netArch, visionAngle, nSegments, totalSteps, activationName)}"
     finalModelFile = "final.zip"
     interModelFile = "inter.zip"
     eval_callback = EvalCallback(
@@ -128,4 +132,5 @@ def trainSac(trainingConfig: TrainingConfig):
     )
 
 if __name__ == "__main__":
+    SIGNATURE = sys.argv[1]
     run()
