@@ -5,6 +5,7 @@ Test cases a priori do not accept arguments. They are run as is, all the neccess
 """
 
 TestCases = {}
+TestModelPath = ""
 
 def testCase(testName = None):
     assert testName != None, "Please give your test a unique name"
@@ -92,22 +93,25 @@ def testCustomAviaryObservationSpace():
 @testCase("compute-custom-obs")
 def testCustomAviaryObservationSpace():
     import numpy as np
+    from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import ActionType
     from agent.sensor import VisionParams
     import aviary.utils as au
 
     env = au.getEnv(
         fGui=True, 
-        visionParams=VisionParams(nSegments=33, visionAngle=60, range=.35)
+        visionParams=VisionParams(nSegments=33, visionAngle=60, range=.35),
+        initial_rpys=np.array([[0, 0, -np.pi / 2]])
     )
 
     i = 0
     while True:
-        env.step(np.zeros((4,)))
+        obs, _, _, _ = env.step(np.array([.1, 0, 0, .0]))
+        print(obs)
         i += 1
-        if i % 250 == 0:
-            print(f"LOG[{i}]:\n"
-                f"{np.flip(env.obstacleSensor.getReadyReadings().reshape((env.obstacleSensor.visionParams.nSegments, 1)), axis=0)}\n"
-            )
+        # if i % 250 == 0:
+        #     print(f"LOG[{i}]:\n"
+        #         f"{np.flip(env.obstacleSensor.getReadyReadings().reshape((env.obstacleSensor.visionParams.nSegments, 1)), axis=0)}\n"
+        #     )
 
 @testCase("compute-reward")
 def testRewardComputation():
@@ -119,17 +123,15 @@ def testRewardComputation():
         fGui=True,
         fDebug=True,
         visionParams=VisionParams(nSegments=121, visionAngle=120),
-        initial_xyzs=np.array([[1.82, 0, .15]])
-        # initial_rpys=np.array([[0, 0, 0]])
     )
 
     i = 0
     while True:
-        _, reward, done, _ = env.step(np.zeros((4,)))
+        _, reward, done, _ = env.step(np.array([.5, 0, 0, .5]))
         i += 1
-        if i % 250 == 0:
-            print(f"Reward at {i}: {reward} -> {done}")
-            env.rewardBufferInfo()
+        print(f"Reward at {i}: {reward} -> {done}")
+        # if i % 250 == 0:
+            # env.rewardBufferInfo()
         
         if done:
             env.reset()
@@ -137,6 +139,7 @@ def testRewardComputation():
 @testCase("test-model")
 def testTrainedModel():
     from stable_baselines3 import SAC
+    from stable_baselines3 import PPO
 
     from aviary.utils import getEnv
     from agent.sensor import VisionParams
@@ -146,28 +149,29 @@ def testTrainedModel():
         fGui=True,
         fDebug=False,
         visionParams=VisionParams(
-            visionAngle=110,
-            nSegments=110,
+            visionAngle=120,
+            nSegments=121,
             range=.4
         )
     )
 
-    modelFile = "final"
-    modelFolder = "110deg-110-256-256-128-64"
-    model = SAC.load(f"models/{modelFolder}/{modelFile}")
+    modelFile = "best_model"
+    # modelFile = "final"
+    # modelFile = "inter"
+    
+    modelFolder = "(ppo-xy-diff_obs-strickt_death-simple_find)-relu-750000-120deg-121-384-256"
+    
+    # model = SAC.load(f"models/{modelFolder}/{modelFile}")
+    model = PPO.load(f"models/{modelFolder}/{modelFile}")
+    
     obs = env.reset()
     
     while True:
         action, _ = model.predict(obs)
         obs, reward, done, _ = env.step(action)
-        print(f"Reward at: {reward} -> {done}")
 
         if done:
-            break
-    
-    env.close()
-
-
+            obs = env.reset()
 
 @testCase("hello-world")
 def testHelloWorld():

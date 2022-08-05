@@ -2,6 +2,8 @@ from stable_baselines3.common.cmd_util import make_vec_env
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3 import SAC
 from stable_baselines3.sac.policies import SACPolicy
+from stable_baselines3 import PPO
+from stable_baselines3.common.policies import ActorCriticPolicy
 import signal, sys
 import torch
 
@@ -37,11 +39,11 @@ class TrainingConfig():
 def run():
     traingSetting = [
         TrainingConfig(
-            netArch=[448, 320, 64],
+            netArch=[384, 256],
             visionAngle=120,
             nSegments=121,
-            evalFreq=1000,
-            totalSteps=200_000,
+            evalFreq=2_000,
+            totalSteps=750_000,
             activationFn=("relu", torch.nn.ReLU)
         )
     ]
@@ -72,7 +74,7 @@ def trainSac(trainingConfig: TrainingConfig):
     trainEnv = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
-        n_envs=1,
+        n_envs=2,
         seed = 0
     )
 
@@ -81,8 +83,8 @@ def trainSac(trainingConfig: TrainingConfig):
         net_arch=netArch
     )
 
-    model = SAC(
-        SACPolicy,
+    model = PPO(
+        ActorCriticPolicy,
         trainEnv,
         policy_kwargs=model_kwargs,
         verbose=1
