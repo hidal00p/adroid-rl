@@ -42,8 +42,8 @@ def parse(config : dict, convention: ConventionType):
     
     return testConfigKwargs
 
-def getConfig(fileName):
-    with open("config.yml", "r") as config:
+def getConfig(fileName = "config.yml"):
+    with open(fileName, "r") as config:
         runConfig = yaml.safe_load(config)
     
     return runConfig
