@@ -32,7 +32,8 @@ def train(trainingConfig: TrainingConfig):
         "==========================\n\n"
     )
     signature = trainingConfig.getSig()
-    netArch, visionAngle, nSegments, evalFreq, totalSteps, activationFn = trainingConfig.getConfig()
+    netArch, activationFn, visionAngle, nSegments, simFreq, avEpisodeSteps, totalSteps, isStrictDeath, baitResetFreq, evalFreq = trainingConfig.getConfig()
+    
     activationName, activation  = activationFn
 
     sa_env_kwargs = dict(
@@ -45,14 +46,17 @@ def train(trainingConfig: TrainingConfig):
             fPoissonGrid=True,
             fDebug=False
         ),
-        trainingConfig=trainingConfig,
-        aggregate_phy_steps = 5
+        freq=simFreq,
+        baitResetFrequency=baitResetFreq,
+        avEpisodeSteps=avEpisodeSteps,
+        fStrictDeath=isStrictDeath,
+        aggregate_phy_steps=5
     )
 
     trainEnv = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
-        n_envs=4,
+        n_envs=2,
         seed = 0
     )
 

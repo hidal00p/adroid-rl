@@ -61,7 +61,9 @@ class CustomAviary(BaseSingleAgentAviary):
                  criticalDistance: float = .075, # if critical distance is too small float32 may overflow
                  fTimeComponent: bool = False,
                  fDebug: bool = False,
-                 trainingConfig: TrainingConfig = TrainingConfig()
+                 fStrictDeath: bool = False,
+                 baitResetFrequency: int = 10,
+                 avEpisodeSteps: int = 2400, # equivalent to 10 sec
                 ):
                  """
                  CustomAviary class operates an agent, which attempts to navigate through a forest of obstacles.
@@ -79,11 +81,9 @@ class CustomAviary(BaseSingleAgentAviary):
                  self.criticalDistance = criticalDistance
                  self.BOUNDARY_RADIUS = np.sqrt(2)*(self.forestProvider.forestSize + self.forestProvider.x_offset)
                  
-                 self.trainingConfig = trainingConfig
-                 self.fStrictDeath = trainingConfig.isStrictDeath
-                 self.EPISODE_LEN_SEC = trainingConfig.avEpisodeSteps * freq
+                 self.fStrictDeath = fStrictDeath
 
-                 self.baitResetFrequency = trainingConfig.baitResetFreq
+                 self.baitResetFrequency = baitResetFrequency
                  self.baitResetCounter = 1
 
                  if (self.fDebug):
@@ -100,6 +100,7 @@ class CustomAviary(BaseSingleAgentAviary):
                     record=record,
                     act=act
                  )
+                 self.EPISODE_LEN_SEC = avEpisodeSteps / freq
     
     def _resetPositionToRand(self):
         xBoundary, yBoundary, _ = self.forestProvider.getPoissonForrestGeometry()
@@ -350,7 +351,7 @@ class CustomAviary(BaseSingleAgentAviary):
             self.finito = True
             totalReward += CustomAviary.ABSOLUTE_PENALTY
 
-        totalReward = baitDistComponent + obstacleProximityComponent
+        totalReward += baitDistComponent + obstacleProximityComponent
         return totalReward
     
     def rewardBufferInfo(self):
