@@ -23,6 +23,7 @@ class TrainingConfig():
         
         # Aviary params
         nEpisodes=5_000,
+        simFreq=240, # Hz, updates per second
         avEpisodeSteps=1_000,
         
         isStrictDeath=True,
@@ -38,17 +39,33 @@ class TrainingConfig():
         self.nSegments = nSegments
         
         self.nEpisodes = nEpisodes
+        self.simFreq = simFreq
         self.avEpisodeSteps = avEpisodeSteps
+        self.totalSteps = self.nEpisodes * self.avEpisodeSteps
+        
         self.isStrictDeath = isStrictDeath
         self.baitResetFreq = baitResetFreq
         self.evalFreq = evalFreq
-        self.totalSteps = self.nEpisodes * self.avEpisodeSteps
     
     def getSig(self):
         return self.signature
     
     def getConfig(self):
-        return (self.netArch, self.visionAngle, self.nSegments, self.evalFreq, self.totalSteps, self.activationFn)
+        return (
+            self.netArch,
+            self.activationFn,
+            
+            self.visionAngle,
+            self.nSegments,
+            
+            self.simFreq,
+            self.avEpisodeSteps,
+            self.totalSteps,
+            
+            self.isStrictDeath,
+            self.baitResetFreq,
+            self.evalFreq
+        )
     
     def construct(**kwargs):
         return TrainingConfig(**kwargs)

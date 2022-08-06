@@ -1,10 +1,10 @@
 sig:
-  algo: "sac"
-  reward: "rew_relaxed"
-  penalty: "severe_death"
+  algo: "ppo"
+  reward: "xyz_diff-z_lim"
+  penalty: "strict_death"
   obs: "kin_obs"
   act: "vel"
-  others: "shinobi-hello_world"
+  others: "strict_correct"
 nn:
   netArch: [400, 300]
   activationFn: "relu"
@@ -12,8 +12,9 @@ obst:
   visionAngle: 120
   nSegments: 121
 aviary:
-  nEpisodes: 5000
-  avEpisodeSteps: 250
+  nEpisodes: 500
+  simFreq: 240
+  avEpisodeSteps: 3600
   isStrictDeath: True
-  baitResetFreq: 10
+  baitResetFreq: 1
   evalFreq: 2000

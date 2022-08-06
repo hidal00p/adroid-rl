@@ -4,6 +4,9 @@ It is a simple script that fetches a particular function, finds its annontated v
 Test cases a priori do not accept arguments. They are run as is, all the neccessary information should be defined within the test case.
 """
 
+from aviary.CustomAviary import CustomAviary
+
+
 TestCases = {}
 TestModelPath = ""
 
@@ -22,6 +25,47 @@ def testCase(testName = None):
         return func
 
     return _testable
+
+# hook1
+# ============Test model main================
+
+@testCase("test-model")
+def testTrainedModel():
+    from stable_baselines3 import SAC
+    from stable_baselines3 import PPO
+
+    from aviary.utils import getEnvFromConfig
+    
+    caseFolder = "sac-correct-strict-1"
+    modelFolder = "sac-xyz_diff-z_lim-strict_death-kin_obs-vel-strict_correct-relu-1800000-120deg-121-400-300"
+    modelFile = "best_model"
+    # modelFile = "final"
+    # modelFile = "inter"
+    
+    modelPath = f"models/{caseFolder}/{modelFolder}/{modelFile}"
+    configPath = f"models/{caseFolder}/config.yml"
+
+    env, sig = getEnvFromConfig(path=configPath)
+
+    algo = sig["algo"]
+    if algo == "ppo":
+        model = PPO.load(modelPath)
+    elif algo == "sac":
+        model = SAC.load(modelPath)
+    else:
+        raise NotImplementedError()
+    
+    obs = env.reset()
+    
+    while True:
+        action, _ = model.predict(obs)
+        obs, reward, done, _ = env.step(action)
+        print(reward)
+        # if done:
+        #     obs = env.reset()
+
+# ============================================
+
 
 @testCase("env-creation")
 def testEnvCreation():
@@ -135,45 +179,8 @@ def testRewardComputation():
         # if i % 250 == 0:
             # env.rewardBufferInfo()
         
-        if done:
-            env.reset()
-
-@testCase("test-model")
-def testTrainedModel():
-    from stable_baselines3 import SAC
-    from stable_baselines3 import PPO
-
-    from aviary.utils import getEnv
-    from agent.sensor import VisionParams
-    import utils.file as uf
-    
-    env = getEnv(
-        fGui=True,
-        fDebug=False,
-        visionParams=VisionParams(
-            visionAngle=120,
-            nSegments=121,
-            range=.4
-        )
-    )
-
-    modelFile = "best_model"
-    # modelFile = "final"
-    # modelFile = "inter"
-    
-    modelFolder = "ppo-xydiff_zlim-scarse_rew_gen-strict_death-low_ent-kin_obs-2-leakyrelu-2000000-120deg-121-512-384"
-    
-    # model = SAC.load(f"models/{modelFolder}/{modelFile}")
-    model = PPO.load(f"models/{modelFolder}/{modelFile}")
-    
-    obs = env.reset()
-    
-    while True:
-        action, _ = model.predict(obs)
-        obs, reward, done, _ = env.step(action)
-        print(reward)
-        if done:
-            obs = env.reset()
+        # if done:
+        #     env.reset()
 
 @testCase("hello-world")
 def testHelloWorld():
@@ -221,12 +228,50 @@ def testConfigImporting():
     from utils.config import importConfig
     from aviary.train import TrainingConfig
     
-    tc = TrainingConfig.construct(
-        **importConfig("config.yml")
-    )
+    tc : TrainingConfig = importConfig()
 
     print(tc.getConfig())
     
+@testCase("construct-aviary-from-config")
+def testConfigImporting():
+    import numpy as np
+    from aviary.CustomAviary import CustomAviary
+    from aviary.train import TrainingConfig
+    from agent.sensor import VisionParams
+    
+    from utils.config import importConfig
+    from utils.terrain import ForestProvider
     
     
+    tc : TrainingConfig = importConfig()
+
+    netArch, activationFn, visionAngle, nSegments, simFreq, avEpisodeSteps, totalSteps, isStrictDeath, baitResetFreq, evalFreq = tc.getConfig()
+
+    sa_env_kwargs = dict(
+        visionParams=VisionParams(
+            visionAngle=visionAngle,
+            nSegments=nSegments,
+            range=.45
+        ),
+        forestProvider=ForestProvider(
+            fPoissonGrid=True,
+            fDebug=False
+        ),
+        freq=simFreq,
+        baitResetFrequency=baitResetFreq,
+        avEpisodeSteps=avEpisodeSteps,
+        fStrictDeath=isStrictDeath,
+        aggregate_phy_steps=5,
+        gui=True
+    )
+
+    env = CustomAviary(**sa_env_kwargs)
+    
+    while True:
+        _, reward, done, _ = env.step(np.array([.0, 0.0, .2, .2]))
+        # print(reward)
+        if done:
+            print(reward)
+            env.close()
+            exit(0)
     
