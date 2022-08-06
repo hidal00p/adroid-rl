@@ -105,9 +105,11 @@ def testCustomAviaryObservationSpace():
 
     i = 0
     while True:
-        obs, _, _, _ = env.step(np.array([.1, 0, 0, .0]))
+        obs, _, done, _ = env.step(np.array([.1, 0.1, 0, .0]))
         print(obs)
         i += 1
+        if done:
+            env.reset()
         # if i % 250 == 0:
         #     print(f"LOG[{i}]:\n"
         #         f"{np.flip(env.obstacleSensor.getReadyReadings().reshape((env.obstacleSensor.visionParams.nSegments, 1)), axis=0)}\n"
@@ -127,7 +129,7 @@ def testRewardComputation():
 
     i = 0
     while True:
-        _, reward, done, _ = env.step(np.array([.5, 0, 0, .5]))
+        _, reward, done, _ = env.step(np.array([.0, .0, .1, .0]))
         i += 1
         print(f"Reward at {i}: {reward} -> {done}")
         # if i % 250 == 0:
@@ -159,7 +161,7 @@ def testTrainedModel():
     # modelFile = "final"
     # modelFile = "inter"
     
-    modelFolder = "(ppo-xy-diff_obs-strickt_death-simple_find)-relu-750000-120deg-121-384-256"
+    modelFolder = "ppo-xydiff_zlim-scarse_rew_gen-strict_death-low_ent-kin_obs-2-leakyrelu-2000000-120deg-121-512-384"
     
     # model = SAC.load(f"models/{modelFolder}/{modelFile}")
     model = PPO.load(f"models/{modelFolder}/{modelFile}")
@@ -169,10 +171,62 @@ def testTrainedModel():
     while True:
         action, _ = model.predict(obs)
         obs, reward, done, _ = env.step(action)
-
+        print(reward)
         if done:
             obs = env.reset()
 
 @testCase("hello-world")
 def testHelloWorld():
     print("Hello World")
+
+@testCase("enums")
+def testEnums():
+    from signature import NeuralNetConventions
+    print(
+        f"{NeuralNetConventions.MAIN_FIELD}\n"
+        f"{NeuralNetConventions}\n"
+        f"{[sig for sig in NeuralNetConventions].pop(0)}\n"
+    )
+
+@testCase("kwargs")
+def testKwargs():
+    def f(a):
+        print(a)
+    
+    kw = {
+        "a":"b",
+    }
+    
+    f(**kw)
+
+@testCase("yaml-load")
+def testLoadYaml():
+    from utils.config import getConfig
+    runConfig = getConfig("config.yml")
+    print(runConfig)
+
+@testCase("import-config")
+def testConfigImporting():
+    from utils.config import importConfig
+    try:
+        print(importConfig("config"))
+        assert False
+    except:
+        assert True
+    
+    print(importConfig("config.yml"))
+
+@testCase("train-conf-from-conf-file")
+def testConfigImporting():
+    from utils.config import importConfig
+    from aviary.train import TrainingConfig
+    
+    tc = TrainingConfig.construct(
+        **importConfig("config.yml")
+    )
+
+    print(tc.getConfig())
+    
+    
+    
+    

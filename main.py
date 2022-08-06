@@ -8,53 +8,30 @@ import signal, sys
 import torch
 
 from aviary.CustomAviary import CustomAviary
+from aviary.train import TrainingConfig
 from agent.sensor import VisionParams
+from signature.utils import constructSigStr
 from utils import ForestProvider
+from utils.config import importConfig
 import utils.file as uf
 
 # Serves to help identify between models run according to separate ideas
 # it also helps with marking processes
-SIGNATURE = "regular"
-
-class TrainingConfig():
-    def __init__(
-        self,
-        netArch,
-        visionAngle,
-        nSegments,
-        evalFreq,
-        totalSteps,
-        activationFn
-    ):
-        self.netArch = netArch
-        self.visionAngle = visionAngle
-        self.nSegments = nSegments
-        self.evalFreq = evalFreq
-        self.totalSteps = totalSteps
-        self.activationFn = activationFn
-    
-    def getConfig(self):
-        return (self.netArch, self.visionAngle, self.nSegments, self.evalFreq, self.totalSteps, self.activationFn)
 
 def run():
     traingSetting = [
-        TrainingConfig(
-            netArch=[384, 256],
-            visionAngle=120,
-            nSegments=121,
-            evalFreq=2_000,
-            totalSteps=750_000,
-            activationFn=("relu", torch.nn.ReLU)
-        )
+        importConfig()
     ]
-    for trainingConfig in traingSetting:
-        trainSac(trainingConfig)
 
-def trainSac(trainingConfig: TrainingConfig):
+    for trainingConfig in traingSetting:
+        train(trainingConfig)
+
+def train(trainingConfig: TrainingConfig):
     print(
         "[INFO] START:\n"
         "==========================\n\n"
     )
+    signature = trainingConfig.getSig()
     netArch, visionAngle, nSegments, evalFreq, totalSteps, activationFn = trainingConfig.getConfig()
     activationName, activation  = activationFn
 
@@ -68,13 +45,14 @@ def trainSac(trainingConfig: TrainingConfig):
             fPoissonGrid=True,
             fDebug=False
         ),
+        trainingConfig=trainingConfig,
         aggregate_phy_steps = 5
     )
 
     trainEnv = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
-        n_envs=2,
+        n_envs=4,
         seed = 0
     )
 
@@ -83,9 +61,16 @@ def trainSac(trainingConfig: TrainingConfig):
         net_arch=netArch
     )
 
-    model = PPO(
-        ActorCriticPolicy,
+    algo = SAC
+    policy = SACPolicy
+    if signature["algo"] == "ppo":
+        algo = PPO
+        policy = ActorCriticPolicy
+
+    model = algo(
+        policy,
         trainEnv,
+        ent_coef=0.01,
         policy_kwargs=model_kwargs,
         verbose=1
     )
@@ -97,8 +82,7 @@ def trainSac(trainingConfig: TrainingConfig):
         seed = 0
     )
 
-    global SIGNATURE
-    path = f"models/{uf.getPathFromModelParams(SIGNATURE, netArch, visionAngle, nSegments, totalSteps, activationName)}"
+    path = f"models/{PATH}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
     finalModelFile = "final.zip"
     interModelFile = "inter.zip"
     eval_callback = EvalCallback(
@@ -134,5 +118,5 @@ def trainSac(trainingConfig: TrainingConfig):
     )
 
 if __name__ == "__main__":
-    SIGNATURE = sys.argv[1]
+    PATH = sys.argv[1]
     run()
