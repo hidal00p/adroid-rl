@@ -6,4 +6,7 @@ But everything has changed after a [Massive Purge](https://github.com/hidal00p/a
 Adroid-RL, however still heavily relates on its parent. And in order to build it successfully, a proper configuration for [gym_pybullet_drones](https://github.com/utiasDSL/gym-pybullet-drones) has to be ensured first.
 
 ## Checkpoints
-- Checkpoint 1; commit: 7e9429c31e3a96dbd9de311df26a9867f1062c5e
+Once checkpoint_n+1 appears, checkpoint_n get erased, unless decided otherwise.
+
+- ~~Checkpoint 1; commit: 7e9429c31e3a96dbd9de311df26a9867f1062c5e~~
+- Checkpoint 2; commit: 90b4e17db81f4666cd34e137db93d0f5c50332c4
