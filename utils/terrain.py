@@ -174,6 +174,7 @@ class ForestProvider:
     ):
         self.forestGrid = []
         self.baitComfortInterval = .05
+        self.baitCoordinates = None
         self.fPoissonGrid = fPoissonGrid
 
         if fPoissonGrid:
@@ -214,7 +215,8 @@ class ForestProvider:
         )
 
         self.forestGrid = p.generate().get()
-        self.baitCoordinates = ((1 + self.baitComfortInterval) * (self.forestSize + self.x_offset), 0)
+        if self.baitCoordinates == None:
+            self.baitCoordinates = ((1 + self.baitComfortInterval) * (self.forestSize + self.x_offset), 0)
     
     def _generateCircularForest(self):
         numPillars = 10
