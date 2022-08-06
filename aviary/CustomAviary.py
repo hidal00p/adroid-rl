@@ -7,15 +7,13 @@ import pybullet as p
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import BaseSingleAgentAviary, ActionType
 from agent.sensor import ObstacleSensor, VisionParams
+from aviary.train import TrainingConfig
 
 from utils import ForestProvider, OrientationVec, RewardBuffer
 
-class ExtendedObservationType(Enum):
-    LIDAR = "lidar" # Observation type to accomodate for obstacle awareness. Dimension is based on agent.sensor.ObstacleSensor.detectObstacles
-
 class CustomAviary(BaseSingleAgentAviary):
     ABSOLUTE_PENALTY = -30
-    BAIT_SPHERE_RADIUS = .15
+    BAIT_SPHERE_RADIUS = .2
     BOUNDARY_RADIUS = 2.4
     """
     Custom aviary inherits from BaseSingleAgentAviary
@@ -47,8 +45,6 @@ class CustomAviary(BaseSingleAgentAviary):
 
     """
     Currently CustomAviary only works on the basis of OnservationType.KIN. It combines this observation vector
-    with ExtendedObservationType.LIDAR for obstacle awareness.
-    CustomAviary takes responsibility for appending observation vector of ExtendedObservationType.LIDAR
     """ 
     def __init__(self,
                  drone_model: DroneModel=DroneModel.CF2X,
@@ -64,7 +60,8 @@ class CustomAviary(BaseSingleAgentAviary):
                  visionParams: VisionParams=VisionParams(),
                  criticalDistance: float = .075, # if critical distance is too small float32 may overflow
                  fTimeComponent: bool = False,
-                 fDebug: bool = False
+                 fDebug: bool = False,
+                 trainingConfig: TrainingConfig = TrainingConfig()
                 ):
                  """
                  CustomAviary class operates an agent, which attempts to navigate through a forest of obstacles.
@@ -75,13 +72,20 @@ class CustomAviary(BaseSingleAgentAviary):
                  self.PILLAR_DATA : list((float, float, int)) = [] # tuple of format (x_coord, y_coord, pybullet_id)
                  self.forestProvider = forestProvider
                  self.obstacleSensor = ObstacleSensor(self, visionParams=visionParams)
-                 self.criticalDistance = criticalDistance
                  self.finito = False
                  self.fDebug = fDebug
                  self.fTimeComponent = fTimeComponent
-                 self.EPISODE_LEN_SEC = 50
+                 
+                 self.criticalDistance = criticalDistance
                  self.BOUNDARY_RADIUS = np.sqrt(2)*(self.forestProvider.forestSize + self.forestProvider.x_offset)
                  
+                 self.trainingConfig = trainingConfig
+                 self.fStrictDeath = trainingConfig.isStrictDeath
+                 self.EPISODE_LEN_SEC = trainingConfig.avEpisodeSteps * freq
+
+                 self.baitResetFrequency = trainingConfig.baitResetFreq
+                 self.baitResetCounter = 1
+
                  if (self.fDebug):
                     self.rewardBuffer = RewardBuffer()
 
@@ -109,7 +113,9 @@ class CustomAviary(BaseSingleAgentAviary):
     """
     def _resetForest(self):
         self.forestProvider._generatePoissonForest()
-        self.forestProvider.resetBaitPosition()
+        if self.baitResetCounter %  self.baitResetFrequency == 0:
+            self.forestProvider.resetBaitPosition()
+        self.baitResetCounter += 1
 
     def _generatePillar(self, coords):
         x, y = coords
@@ -217,13 +223,28 @@ class CustomAviary(BaseSingleAgentAviary):
         #     high=np.concatenate((kinematicObservationSpace.high, baitCompassObservationSpace.high), axis=0),
         #     dtype=np.float32
         # )
+        # kinObsSpace = super()._observationSpace()
+        # newLow = np.concatenate((kinObsSpace.low[:3], kinObsSpace.low[6:9]), axis=0)
+        # newHigh = np.concatenate((kinObsSpace.high[:3], kinObsSpace.high[6:9]), axis=0)
+        
         return super()._observationSpace()
     
     def _computeObs(self):
-        obs = self._getDroneStateVector(0)
-        kinObservation = np.hstack([obs[0:3], obs[7:10], obs[10:13], obs[13:16]]).reshape(12,)
+        state = self._getDroneStateVector(0)
+        kinObservation = np.hstack(
+            [
+                state[0:3],   # xyz
+                state[7:10],  # rpy
+                state[10:13], # velocity
+                state[13:16]  # angular velocity
+            ]
+        ).reshape(12,)
+        
+        posA = self._extractAgentPosition()
         posB = self._extractBaitPosition()
-        kinObservation[0:2] = posB[:2] - kinObservation[0:2]
+        
+        kinObservation[0:3] = posA - posB
+
         return kinObservation
         # NOTE
         # sensorObservation = self.obstacleSensor.getReadyReadings()
@@ -246,19 +267,26 @@ class CustomAviary(BaseSingleAgentAviary):
     
     @_weighted(1.0)
     def _getBaitDistanceRewardComponent(self):     
-        posA = self._extractAgentPosition()[:-1]
-        posB = self._extractBaitPosition()[:-1]
+        posA = self._extractAgentPosition()
+        posB = self._extractBaitPosition()
         
-        distance = np.linalg.norm(posB - posA)
+        distance = np.linalg.norm(posB[:-1] - posA[:-1])
         distanceParam = 0.0
         # Described on Desmos https://www.desmos.com/calculator/hwk0bpdl6y
         if (distance < CustomAviary.BAIT_SPHERE_RADIUS):
             # (0, 1.1]
-            distanceParam = -80 * (distance - CustomAviary.BAIT_SPHERE_RADIUS) * (distance + CustomAviary.BAIT_SPHERE_RADIUS)
+            distanceParam = -200 * (distance - CustomAviary.BAIT_SPHERE_RADIUS) * (distance + CustomAviary.BAIT_SPHERE_RADIUS)
         elif (distance >= CustomAviary.BAIT_SPHERE_RADIUS):
             # [-inf, 0]
-            distanceParam = (distance - CustomAviary.BAIT_SPHERE_RADIUS)*(distance + CustomAviary.BAIT_SPHERE_RADIUS) / -0.5
+            distanceParam = -4 * (distance - CustomAviary.BAIT_SPHERE_RADIUS)*(distance + CustomAviary.BAIT_SPHERE_RADIUS)
         
+        # z component penalty
+        if (posA[2] - posB[2] > 2.5 * CustomAviary.BAIT_SPHERE_RADIUS):
+            distanceParam -= 10 * (posA[2] - posB[2])
+        
+        if (posA[2] - posB[2] < CustomAviary.BAIT_SPHERE_RADIUS / 1.5):
+            distanceParam -= 4
+
         return distanceParam
     
     def _getTotalBaitRewardComponent(self):
@@ -315,6 +343,7 @@ class CustomAviary(BaseSingleAgentAviary):
         if (self.fDebug):
             self.rewardBuffer.append((baitDistComponent, obstacleProximityComponent))
         if (
+            self.fStrictDeath and
             self.step_counter/self.SIM_FREQ > self.EPISODE_LEN_SEC and 
             np.linalg.norm(posA - posB) > CustomAviary.BAIT_SPHERE_RADIUS
         ):
