@@ -1,3 +1,7 @@
 #!/bin/bash
-FILE="log-$1.txt"
-nohup python3 main.py $1 > logs/$FILE &
+mkdir logs/$1
+
+mkdir models/$1
+cp config.yml models/$1
+
+nohup python3 main.py $1 > logs/$1/logs.txt &

@@ -2,58 +2,38 @@ from stable_baselines3.common.cmd_util import make_vec_env
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3 import SAC
 from stable_baselines3.sac.policies import SACPolicy
+from stable_baselines3 import PPO
+from stable_baselines3.common.policies import ActorCriticPolicy
 import signal, sys
 import torch
 
 from aviary.CustomAviary import CustomAviary
+from aviary.train import TrainingConfig
 from agent.sensor import VisionParams
+from signature.utils import constructSigStr
 from utils import ForestProvider
+from utils.config import importConfig
 import utils.file as uf
 
 # Serves to help identify between models run according to separate ideas
 # it also helps with marking processes
-SIGNATURE = "regular"
-
-class TrainingConfig():
-    def __init__(
-        self,
-        netArch,
-        visionAngle,
-        nSegments,
-        evalFreq,
-        totalSteps,
-        activationFn
-    ):
-        self.netArch = netArch
-        self.visionAngle = visionAngle
-        self.nSegments = nSegments
-        self.evalFreq = evalFreq
-        self.totalSteps = totalSteps
-        self.activationFn = activationFn
-    
-    def getConfig(self):
-        return (self.netArch, self.visionAngle, self.nSegments, self.evalFreq, self.totalSteps, self.activationFn)
 
 def run():
     traingSetting = [
-        TrainingConfig(
-            netArch=[448, 320, 64],
-            visionAngle=120,
-            nSegments=121,
-            evalFreq=1000,
-            totalSteps=200_000,
-            activationFn=("relu", torch.nn.ReLU)
-        )
+        importConfig()
     ]
-    for trainingConfig in traingSetting:
-        trainSac(trainingConfig)
 
-def trainSac(trainingConfig: TrainingConfig):
+    for trainingConfig in traingSetting:
+        train(trainingConfig)
+
+def train(trainingConfig: TrainingConfig):
     print(
         "[INFO] START:\n"
         "==========================\n\n"
     )
-    netArch, visionAngle, nSegments, evalFreq, totalSteps, activationFn = trainingConfig.getConfig()
+    signature = trainingConfig.getSig()
+    netArch, activationFn, visionAngle, nSegments, simFreq, avEpisodeSteps, totalSteps, isStrictDeath, baitResetFreq, evalFreq = trainingConfig.getConfig()
+    
     activationName, activation  = activationFn
 
     sa_env_kwargs = dict(
@@ -66,13 +46,17 @@ def trainSac(trainingConfig: TrainingConfig):
             fPoissonGrid=True,
             fDebug=False
         ),
-        aggregate_phy_steps = 5
+        freq=simFreq,
+        baitResetFrequency=baitResetFreq,
+        avEpisodeSteps=avEpisodeSteps,
+        fStrictDeath=isStrictDeath,
+        aggregate_phy_steps=5
     )
 
     trainEnv = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
-        n_envs=1,
+        n_envs=2,
         seed = 0
     )
 
@@ -81,9 +65,16 @@ def trainSac(trainingConfig: TrainingConfig):
         net_arch=netArch
     )
 
-    model = SAC(
-        SACPolicy,
+    algo = SAC
+    policy = SACPolicy
+    if signature["algo"] == "ppo":
+        algo = PPO
+        policy = ActorCriticPolicy
+
+    model = algo(
+        policy,
         trainEnv,
+        ent_coef=0.01,
         policy_kwargs=model_kwargs,
         verbose=1
     )
@@ -95,8 +86,7 @@ def trainSac(trainingConfig: TrainingConfig):
         seed = 0
     )
 
-    global SIGNATURE
-    path = f"models/{uf.getPathFromModelParams(SIGNATURE, netArch, visionAngle, nSegments, totalSteps, activationName)}"
+    path = f"models/{PATH}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
     finalModelFile = "final.zip"
     interModelFile = "inter.zip"
     eval_callback = EvalCallback(
@@ -132,5 +122,5 @@ def trainSac(trainingConfig: TrainingConfig):
     )
 
 if __name__ == "__main__":
-    SIGNATURE = sys.argv[1]
+    PATH = sys.argv[1]
     run()

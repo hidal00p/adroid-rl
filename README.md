@@ -36,3 +36,8 @@ Extended signatures are tailed with arch specifics, or some of your test env sep
 
 `(ppo-xy-diff_obs-simple_find)-relu-500000-120deg-121-384-256`
 
+## Checkpoints
+Once checkpoint_n+1 appears, checkpoint_n get erased, unless decided otherwise.
+
+- ~~Checkpoint 1; commit: 7e9429c31e3a96dbd9de311df26a9867f1062c5e~~
+- Checkpoint 2; ch-2:90b4e17db81f4666cd34e137db93d0f5c50332c4

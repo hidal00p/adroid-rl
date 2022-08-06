@@ -174,6 +174,7 @@ class ForestProvider:
     ):
         self.forestGrid = []
         self.baitComfortInterval = .05
+        self.baitCoordinates = None
         self.fPoissonGrid = fPoissonGrid
 
         if fPoissonGrid:
@@ -188,6 +189,12 @@ class ForestProvider:
         assert len(self.forestGrid) != 0 and self.baitCoordinates != None, "Forest and/or bait configured incorrectly"
         if fDebug:
             print(f"[DEBUG INFO FOR {__class__}]:\nforestGrid: {self.forestGrid}\nbaitCoordinates: {self.baitCoordinates}")
+    
+    def resetBaitPosition(self):
+        self.baitCoordinates = (
+            np.random.uniform(self.x_offset, self.x_offset + self.forestSize), 
+            np.random.uniform(-0.5*self.forestSize, 0.5*self.forestSize)
+        )
 
     def getPoissonForrestGeometry(self):
         if not self.fPoissonGrid:
@@ -195,7 +202,7 @@ class ForestProvider:
         
         # Returns boundary values ((x_min, x_max), (y_min, y_max), (z_min, z_max))
         baitX, _ = self.baitCoordinates
-        return ((self.x_offset - .3, (1 + self.baitComfortInterval) + baitX), (-self.forestSize/2, self.forestSize/2), (0.05, .25))
+        return ((self.x_offset - .3, (1 + self.baitComfortInterval) * baitX), (-self.forestSize/2, self.forestSize/2), (0.06, .45))
 
     def _generatePoissonForest(self):
         y_offset = -self.forestSize / 2
@@ -208,7 +215,8 @@ class ForestProvider:
         )
 
         self.forestGrid = p.generate().get()
-        self.baitCoordinates = ((1 + self.baitComfortInterval) * (self.forestSize + self.x_offset), 0)
+        if self.baitCoordinates == None:
+            self.baitCoordinates = ((1 + self.baitComfortInterval) * (self.forestSize + self.x_offset), 0)
     
     def _generateCircularForest(self):
         numPillars = 10

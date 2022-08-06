@@ -5,7 +5,7 @@ class RewardBuffer():
     
     def append(self, val):
         if len(self.data) > self.maxSize:
-            self.data.pop()
+            self.data.pop(0)
         
         self.data.append(val)
     

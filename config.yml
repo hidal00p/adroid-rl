@@ -1,0 +1,20 @@
+sig:
+  algo: "ppo"
+  reward: "xyz_diff-z_lim"
+  penalty: "strict_death"
+  obs: "kin_obs"
+  act: "vel"
+  others: "strict_correct"
+nn:
+  netArch: [400, 300]
+  activationFn: "relu"
+obst:
+  visionAngle: 120
+  nSegments: 121
+aviary:
+  nEpisodes: 500
+  simFreq: 240
+  avEpisodeSteps: 3600
+  isStrictDeath: True
+  baitResetFreq: 1
+  evalFreq: 2000
