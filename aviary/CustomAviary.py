@@ -13,7 +13,7 @@ from utils import ForestProvider, OrientationVec, RewardBuffer
 
 class CustomAviary(BaseSingleAgentAviary):
     ABSOLUTE_PENALTY = -30
-    BAIT_SPHERE_RADIUS = .2
+    BAIT_SPHERE_RADIUS = .15
     BOUNDARY_RADIUS = 2.4
     """
     Custom aviary inherits from BaseSingleAgentAviary
