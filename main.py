@@ -57,7 +57,7 @@ def train(trainingConfig: TrainingConfig):
         CustomAviary,
         env_kwargs=sa_env_kwargs,
         n_envs=2,
-        seed = 0
+        seed=0
     )
 
     model_kwargs = dict(
@@ -83,7 +83,7 @@ def train(trainingConfig: TrainingConfig):
         CustomAviary,
         env_kwargs=sa_env_kwargs,
         n_envs=1,
-        seed = 0
+        seed=0
     )
 
     path = f"models/{PATH}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
