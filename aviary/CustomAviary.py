@@ -64,6 +64,7 @@ class CustomAviary(BaseSingleAgentAviary):
                  fStrictDeath: bool = False,
                  baitResetFrequency: int = 10,
                  avEpisodeSteps: int = 2400, # equivalent to 10 sec
+                 continuityChance = 0.0
                 ):
                  """
                  CustomAviary class operates an agent, which attempts to navigate through a forest of obstacles.
@@ -77,6 +78,10 @@ class CustomAviary(BaseSingleAgentAviary):
                  self.finito = False
                  self.fDebug = fDebug
                  self.fTimeComponent = fTimeComponent
+                 
+                 if (continuityChance > 1 or continuityChance < 0):
+                    raise RuntimeError(f"Continuity chance should be in [0.0, 1.0], but {continuityChance} was provided.")
+                 self.continuityChance = continuityChance
                  
                  self.criticalDistance = criticalDistance
                  self.BOUNDARY_RADIUS = np.sqrt(2)*(self.forestProvider.forestSize + self.forestProvider.x_offset)
@@ -114,7 +119,7 @@ class CustomAviary(BaseSingleAgentAviary):
     """
     def _resetForest(self):
         self.forestProvider._generatePoissonForest()
-        if self.baitResetCounter %  self.baitResetFrequency == 0:
+        if self.baitResetCounter % self.baitResetFrequency == 0:
             self.forestProvider.resetBaitPosition()
         self.baitResetCounter += 1
 
@@ -360,8 +365,16 @@ class CustomAviary(BaseSingleAgentAviary):
 
     def _computeDone(self):
         if (self.step_counter/self.SIM_FREQ > self.EPISODE_LEN_SEC):
+
+            if (not self.finito and np.random.uniform() < self.continuityChance):
+                self.forestProvider.resetBaitPosition()
+                self.INIT_XYZS = self._extractAgentPosition().reshape(1,3)
+                super().reset()
+                return False
+
             return True
         
+        # self.finito has the highest priority
         return self.finito
     
     def _computeInfo(self):

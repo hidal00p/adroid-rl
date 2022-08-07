@@ -10,3 +10,10 @@ Once checkpoint_n+1 appears, checkpoint_n get erased, unless decided otherwise.
 
 - ~~Checkpoint 1; commit: 7e9429c31e3a96dbd9de311df26a9867f1062c5e~~
 - Checkpoint 2; commit: 90b4e17db81f4666cd34e137db93d0f5c50332c4
+
+### Rationale
+It is a spin-off of Checkpoint 2 (ch-2) branch. 
+The idea is to encode a chance of allowing the env to remain as is, with only a bait updating its position.
+Hopefully this would include a greater sense of continuity into the environment and the mission.
+
+If it passes the performance test, and sets a new bench, I will add the configurable param for this setting.

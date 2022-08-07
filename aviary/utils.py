@@ -13,7 +13,9 @@ def getEnv(
     initial_xyzs = np.array([[0, 0, .15]]), 
     initial_rpys = np.array([[0, 0, 0]]),
     visionParams=VisionParams(),
-    actionType=ActionType.VEL
+    actionType=ActionType.VEL,
+    continuityChance=0.0,
+    baitResetFrequency=5
     ):
     # Define env and forest provider
     forestProvider = FP(fPoissonGrid=True, fDebug=True)
@@ -24,7 +26,9 @@ def getEnv(
         initial_xyzs=initial_xyzs,
         initial_rpys=initial_rpys,
         visionParams=visionParams,
-        act=actionType
+        act=actionType,
+        continuityChance=continuityChance,
+        baitResetFrequency=baitResetFrequency
     )
     return env
 

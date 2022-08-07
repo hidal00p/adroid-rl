@@ -50,7 +50,8 @@ def train(trainingConfig: TrainingConfig):
         baitResetFrequency=baitResetFreq,
         avEpisodeSteps=avEpisodeSteps,
         fStrictDeath=isStrictDeath,
-        aggregate_phy_steps=5
+        aggregate_phy_steps=5,
+        continuityChance=1./4
     )
 
     trainEnv = make_vec_env(
