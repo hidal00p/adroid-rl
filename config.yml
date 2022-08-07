@@ -1,5 +1,5 @@
 sig:
-  algo: "ppo"
+  algo: "sac"
   reward: "xyz_diff-z_lim"
   penalty: "strict_death"
   obs: "kin_obs"
