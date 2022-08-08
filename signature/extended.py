@@ -12,6 +12,8 @@ class ObstacleSensorConventions(Enum):
     VISION_ANGLE = ("visionAngle", False)
     N_SEG = ("nSegments", False)
 
+    COMPRESSION_PARAM = ("compressionParam", False)
+
 class AviaryConventions(Enum):
     MAIN_FIELD = ("aviary", True)
 
@@ -19,6 +21,8 @@ class AviaryConventions(Enum):
     SIM_FREQ = ("simFreq", False)
     EP_AV_N_STEPS = ("avEpisodeSteps", False)
 
+    COLLISION_DISTANCE = ("collisionDistance", False)
+    IS_STRICT_BOUNDARY = ("isStrictBoundary", False)
     IS_STRICT_DEATH = ("isStrictDeath", False)
     BAIT_RESET_FREQ = ("baitResetFreq", False)
     EVAL_FREQ = ("evalFreq", False)

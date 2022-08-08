@@ -1,20 +1,23 @@
 sig:
-  algo: "ppo"
-  reward: "xyz_diff-z_lim"
-  penalty: "strict_death"
-  obs: "kin_obs"
+  algo: "sac"
+  reward: "xy_diff"
+  penalty: "z_lim-collision_penalty-boundary_penalty"
+  obs: "kin_obst_bait_compressed_sensor_obs"
   act: "vel"
-  others: "strict_correct"
+  others: ""
 nn:
-  netArch: [400, 300]
+  netArch: [512, 384]
   activationFn: "relu"
 obst:
   visionAngle: 120
-  nSegments: 121
+  nSegments: 120
+  compressionParam: 12
 aviary:
-  nEpisodes: 500
+  nEpisodes: 750
   simFreq: 240
   avEpisodeSteps: 3600
-  isStrictDeath: True
-  baitResetFreq: 1
-  evalFreq: 2000
+  collisionDistance: 0.12
+  isStrictBoundary: True
+  isStrictDeath: False
+  baitResetFreq: 5
+  evalFreq: 5000

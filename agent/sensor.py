@@ -21,7 +21,12 @@ class VisionParams:
 
     (Note that nSegments parameter has to be complient with neural network input layer)
     """
-    def __init__(self, visionAngle = 160, nSegments = 20, range = .65):
+    def __init__(
+        self, 
+        visionAngle = 160, 
+        nSegments = 20, 
+        range = .35,
+    ):
         self.visionAngle = visionAngle * TrigConsts.DEG2RAD
         self.nSegments = nSegments
         self.range = range
@@ -38,10 +43,15 @@ class ObstacleSensor():
     * env - a configured CustomAviary with obstacle forest and agent
     * visionParams - VisionParams.class instance
     """
-    def __init__(self, env : gym.Env, visionParams = VisionParams()):
+    def __init__(self, env : gym.Env, visionParams = VisionParams(), compressionParam: int = None):
         self.env = env
         self.visionParams = visionParams
         self.lastRayReading = []
+        
+        self.compressionParam = compressionParam
+        if self.compressionParam != None:
+            assert self.visionParams.nSegments % self.compressionParam == 0, "Provide correct compression parameter"
+            self.compressionSweep = int(self.visionParams.nSegments / self.compressionParam)
 
     """
     Computes a pencil of rays that get emmited to obtain data about obstacles.
@@ -89,10 +99,6 @@ class ObstacleSensor():
         
         return rayPencil
     
-    def _computeDitance(self, x, y):
-        x = np.array(x)
-        y = np.array(y)
-
     """
     Takes advantage of rayTestBatch API exposed by pybullet physics engine
     """
@@ -107,8 +113,8 @@ class ObstacleSensor():
 
         self.lastRayReading = []
         for obstacleId, _, _, hitPos, _ in measurments:
-            # Compute a hit distance in agent's reference frame
-            hitDistance = -1 if obstacleId == -1 else np.linalg.norm(np.array(list(hitPos)) - np.array(posA))
+            # Compute hit distance in agent's reference frame
+            hitDistance = 0 if obstacleId == -1 else np.linalg.norm(np.array(list(hitPos)) - np.array(posA))
             self.lastRayReading.append(hitDistance)
         
         return self.lastRayReading
@@ -117,14 +123,29 @@ class ObstacleSensor():
     Returns flattened vector ready for usage in NN input layer
     """
     def getReadyReadings(self):
-        return np.array(self._detectObstacles())
+        sensorReadings = np.array(self._detectObstacles())
+        
+        if(self.compressionParam != None):
+            compressedReadings = []
+            for i in range(self.compressionParam):
+                compressedReadings.append(
+                    sensorReadings[
+                        i * self.compressionSweep:
+                        (i+1) * self.compressionSweep
+                    ].sum()
+                )
+            return np.array(compressedReadings)
+
+        return sensorReadings
 
     def observationSpace(self):
-        minDistance = -1.0 # -1 represents absense of obstacles in the visionParams.range
+        minDistance = 0.0 # -1 represents absense of obstacles in the visionParams.range
         maxDistance = self.visionParams.range
 
-        minObservationVector = np.full((self.visionParams.nSegments, ), minDistance)
-        maxObservationVector = np.full((self.visionParams.nSegments, ), maxDistance)
+        observationDimension = self.compressionParam if self.compressionParam != None else self.visionParams.nSegments
+
+        minObservationVector = np.full((observationDimension, ), minDistance)
+        maxObservationVector = np.full((observationDimension, ), maxDistance)
 
         return spaces.Box(
             low=minObservationVector,

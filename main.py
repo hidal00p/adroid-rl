@@ -26,21 +26,32 @@ def run():
     for trainingConfig in traingSetting:
         train(trainingConfig)
 
-def train(trainingConfig: TrainingConfig):
+def train(trainingConfig: TrainingConfig, fExistingModel = False):
     print(
         "[INFO] START:\n"
         "==========================\n\n"
     )
     signature = trainingConfig.getSig()
-    netArch, activationFn, visionAngle, nSegments, simFreq, avEpisodeSteps, totalSteps, isStrictDeath, baitResetFreq, evalFreq = trainingConfig.getConfig()
+    netArch,\
+    activationFn,\
+    visionAngle,\
+    nSegments,\
+    compressionParam,\
+    simFreq,\
+    avEpisodeSteps,\
+    totalSteps,\
+    collisionDistance,\
+    isStrictBoundary,\
+    isStrictDeath,\
+    baitResetFreq,\
+    evalFreq = trainingConfig.getConfig()
     
     activationName, activation  = activationFn
 
     sa_env_kwargs = dict(
         visionParams=VisionParams(
             visionAngle=visionAngle,
-            nSegments=nSegments,
-            range=.45
+            nSegments=nSegments        
         ),
         forestProvider=ForestProvider(
             fPoissonGrid=True,
@@ -50,13 +61,16 @@ def train(trainingConfig: TrainingConfig):
         baitResetFrequency=baitResetFreq,
         avEpisodeSteps=avEpisodeSteps,
         fStrictDeath=isStrictDeath,
-        aggregate_phy_steps=5
+        aggregate_phy_steps=5,
+        compressionParam=compressionParam,
+        fStrictBoundary=isStrictBoundary,
+        criticalDistance=collisionDistance
     )
 
     trainEnv = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
-        n_envs=2,
+        n_envs=1,
         seed = 0
     )
 
@@ -64,6 +78,10 @@ def train(trainingConfig: TrainingConfig):
         activation_fn=activation,
         net_arch=netArch
     )
+
+    path = f"models/{PATH}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
+    finalModelFile = "final.zip"
+    interModelFile = "inter.zip"
 
     algo = SAC
     policy = SACPolicy
@@ -79,6 +97,9 @@ def train(trainingConfig: TrainingConfig):
         verbose=1
     )
     
+    if fExistingModel:
+        algo.load(f"{path}/best_model")
+
     eval_env = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
@@ -86,9 +107,6 @@ def train(trainingConfig: TrainingConfig):
         seed = 0
     )
 
-    path = f"models/{PATH}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
-    finalModelFile = "final.zip"
-    interModelFile = "inter.zip"
     eval_callback = EvalCallback(
         eval_env,
         verbose=1,
@@ -109,11 +127,15 @@ def train(trainingConfig: TrainingConfig):
     # Register signal handler
     signal.signal(signal.SIGINT, sigintHandler)
     signal.signal(signal.SIGTERM, sigintHandler)
-
-    model.learn(
-        total_timesteps=totalSteps,
-        callback=eval_callback
-    )
+    
+    try:
+        model.learn(
+            total_timesteps=totalSteps,
+            callback=eval_callback
+        )
+    except:
+        train(trainingConfig, True)
+        pass
     
     model.save(f"{path}/{finalModelFile}")
     print(

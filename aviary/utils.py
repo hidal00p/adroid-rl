@@ -13,10 +13,11 @@ def getEnv(
     initial_xyzs = np.array([[0, 0, .15]]), 
     initial_rpys = np.array([[0, 0, 0]]),
     visionParams=VisionParams(),
-    actionType=ActionType.VEL
+    actionType=ActionType.VEL,
+    compressionParam=None
     ):
     # Define env and forest provider
-    forestProvider = FP(fPoissonGrid=True, fDebug=True)
+    forestProvider = FP(fPoissonGrid=True, fDebug=True, densityParameter=0.5)
     env = CA(
         gui=fGui,
         fDebug=fDebug,
@@ -24,13 +25,26 @@ def getEnv(
         initial_xyzs=initial_xyzs,
         initial_rpys=initial_rpys,
         visionParams=visionParams,
-        act=actionType
+        act=actionType,
+        compressionParam=compressionParam
     )
     return env
 
 def getEnvFromConfig(path="config.yml", gui=True) -> Tuple[CA, dict]:
     config = importConfig(path)
-    netArch, activationFn, visionAngle, nSegments, simFreq, avEpisodeSteps, totalSteps, isStrictDeath, baitResetFreq, evalFreq = config.getConfig()
+    netArch,\
+    activationFn,\
+    visionAngle,\
+    nSegments,\
+    compressionParam,\
+    simFreq,\
+    avEpisodeSteps,\
+    totalSteps,\
+    collisionDistance,\
+    isStrictBoundary,\
+    isStrictDeath,\
+    baitResetFreq,\
+    evalFreq = config.getConfig()
 
     sa_env_kwargs = dict(
         gui=gui,
@@ -47,7 +61,10 @@ def getEnvFromConfig(path="config.yml", gui=True) -> Tuple[CA, dict]:
         baitResetFrequency=baitResetFreq,
         avEpisodeSteps=avEpisodeSteps,
         fStrictDeath=isStrictDeath,
-        aggregate_phy_steps=5
+        aggregate_phy_steps=5,
+        compressionParam=compressionParam,
+        fStrictBoundary=isStrictBoundary,
+        criticalDistance=collisionDistance
     )
 
     return CA(**sa_env_kwargs), config.getSig()

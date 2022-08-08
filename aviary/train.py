@@ -20,12 +20,16 @@ class TrainingConfig():
         # Obstacle sensor args
         visionAngle=120,
         nSegments=121,
+
+        compressionParam=None,
         
         # Aviary params
         nEpisodes=5_000,
         simFreq=240, # Hz, updates per second
         avEpisodeSteps=1_000,
         
+        collisionDistance=.1,
+        isStrictBoundary=True,
         isStrictDeath=True,
         baitResetFreq=10,
         evalFreq=2_000
@@ -37,12 +41,16 @@ class TrainingConfig():
 
         self.visionAngle = visionAngle
         self.nSegments = nSegments
+
+        self.compressionParam = compressionParam
         
         self.nEpisodes = nEpisodes
         self.simFreq = simFreq
         self.avEpisodeSteps = avEpisodeSteps
         self.totalSteps = self.nEpisodes * self.avEpisodeSteps
         
+        self.collisionDistance = collisionDistance
+        self.isStrictBoundary = isStrictBoundary
         self.isStrictDeath = isStrictDeath
         self.baitResetFreq = baitResetFreq
         self.evalFreq = evalFreq
@@ -58,10 +66,14 @@ class TrainingConfig():
             self.visionAngle,
             self.nSegments,
             
+            self.compressionParam,
+
             self.simFreq,
             self.avEpisodeSteps,
             self.totalSteps,
             
+            self.collisionDistance,
+            self.isStrictBoundary,
             self.isStrictDeath,
             self.baitResetFreq,
             self.evalFreq
