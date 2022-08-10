@@ -5,7 +5,6 @@ from stable_baselines3.sac.policies import SACPolicy
 from stable_baselines3 import PPO
 from stable_baselines3.common.policies import ActorCriticPolicy
 import signal, sys
-import torch
 
 from aviary.CustomAviary import CustomAviary
 from aviary.train import TrainingConfig
@@ -19,14 +18,15 @@ import utils.file as uf
 # it also helps with marking processes
 
 def run():
+    importPath = "config.yml" if not IS_RESET else f"models/{PATH}/config.yml"
     traingSetting = [
-        importConfig()
+        importConfig(importPath)
     ]
-
+    
     for trainingConfig in traingSetting:
         train(trainingConfig)
 
-def train(trainingConfig: TrainingConfig, fExistingModel = False):
+def train(trainingConfig: TrainingConfig):
     print(
         "[INFO] START:\n"
         "==========================\n\n"
@@ -47,6 +47,9 @@ def train(trainingConfig: TrainingConfig, fExistingModel = False):
     evalFreq = trainingConfig.getConfig()
     
     activationName, activation  = activationFn
+    fYaw = True
+    if visionAngle == 360:
+        fYaw = False
 
     sa_env_kwargs = dict(
         visionParams=VisionParams(
@@ -64,14 +67,16 @@ def train(trainingConfig: TrainingConfig, fExistingModel = False):
         aggregate_phy_steps=5,
         compressionParam=compressionParam,
         fStrictBoundary=isStrictBoundary,
-        criticalDistance=collisionDistance
+        criticalDistance=collisionDistance,
+        fYaw=fYaw,
+        fTwoDimAction=True
     )
 
     trainEnv = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
-        n_envs=1,
-        seed = 0
+        n_envs=6,
+        seed=0
     )
 
     model_kwargs = dict(
@@ -79,38 +84,44 @@ def train(trainingConfig: TrainingConfig, fExistingModel = False):
         net_arch=netArch
     )
 
-    path = f"models/{PATH}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
+    pathRoot = PATH if not IS_RESET else f"{PATH}-RESET"
+    loadPath = f"models/{PATH}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
+    savePath = f"models/{pathRoot}/{uf.getPathFromModelParams(constructSigStr(signature), netArch, visionAngle, nSegments, totalSteps, activationName)}"
+    assert IS_RESET == (loadPath != savePath), "Somethig is wrong with reseting"
+    
     finalModelFile = "final.zip"
     interModelFile = "inter.zip"
 
     algo = SAC
     policy = SACPolicy
+    entropyCoef = 0
     if signature["algo"] == "ppo":
         algo = PPO
         policy = ActorCriticPolicy
+        entropyCoef = 0.01
 
     model = algo(
         policy,
         trainEnv,
-        ent_coef=0.01,
+        ent_coef=entropyCoef,
         policy_kwargs=model_kwargs,
         verbose=1
     )
     
-    if fExistingModel:
-        algo.load(f"{path}/best_model")
+    if IS_RESET:
+        algo.load(f"{loadPath}/best_model")
 
     eval_env = make_vec_env(
         CustomAviary,
         env_kwargs=sa_env_kwargs,
         n_envs=1,
-        seed = 0
+        seed=0
     )
 
     eval_callback = EvalCallback(
         eval_env,
         verbose=1,
-        best_model_save_path=path,
+        best_model_save_path=savePath,
         eval_freq=evalFreq,
         deterministic=True,
         render=False
@@ -118,7 +129,7 @@ def train(trainingConfig: TrainingConfig, fExistingModel = False):
     
     # Define SIGINT handler
     def sigintHandler(sig, frame):
-        model.save(f"{path}/{interModelFile}")
+        model.save(f"{savePath}/{interModelFile}")
 
         trainEnv.close()
         print("Shutting down gracefully")
@@ -133,11 +144,13 @@ def train(trainingConfig: TrainingConfig, fExistingModel = False):
             total_timesteps=totalSteps,
             callback=eval_callback
         )
+        print("Finished learning")
     except:
-        train(trainingConfig, True)
-        pass
+        print("EXCEPTION CAUGHT")
+        exit(0)
     
-    model.save(f"{path}/{finalModelFile}")
+    print("Saving the final model...")
+    model.save(f"{savePath}/{finalModelFile}")
     print(
         "\n\n[INFO] DONE:\n"
         "==========================\n\n"
@@ -145,4 +158,9 @@ def train(trainingConfig: TrainingConfig, fExistingModel = False):
 
 if __name__ == "__main__":
     PATH = sys.argv[1]
+    IS_RESET = False
+    
+    if len(sys.argv) > 2:
+        IS_RESET = True
+
     run()
